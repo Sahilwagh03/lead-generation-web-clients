@@ -20,7 +20,7 @@ import os
 from dotenv import load_dotenv
 import ollama
 from bs4 import BeautifulSoup
-from app.utils.gemini import init_gemini , process_with_gemini
+from app.utils.cerebras_ai import init_cerebras , process_with_cerebras
 
 # ============================================================================
 # BROWSER SETUP FUNCTIONS
@@ -330,7 +330,7 @@ def create_profile_data_dict(username, ai_data=None):
     return profile_data
 
 
-def scrape_profile(driver, username, gemini_model, ollama_model):
+def scrape_profile(driver, username, model, ollama_model):
     """Scrape a single Instagram profile"""
     try:
         print(f"\n📊 Scraping @{username}...")
@@ -343,9 +343,11 @@ def scrape_profile(driver, username, gemini_model, ollama_model):
         # Clean HTML
         cleaned_content = clean_html_keep_links(html_content)
         
-        if gemini_model:
-            # Process with Gemini
-            ai_data = process_with_gemini(cleaned_content, username, gemini_model)
+        time.sleep(5)
+
+        if model:
+            # Process with Cerebras
+            ai_data = process_with_cerebras(cleaned_content, username, model)
         else:
             # Process with AI
             ai_data = process_with_ollama(cleaned_content, username, ollama_model)
@@ -372,11 +374,11 @@ def scrape_profile(driver, username, gemini_model, ollama_model):
         return None
 
 
-def scrape_multiple_profiles(driver, usernames, gemini_model, ollama_model, delay_range=(5, 10)):
+def scrape_multiple_profiles(driver, usernames, model, ollama_model, delay_range=(5, 10)):
     """Scrape multiple Instagram profiles with delays"""
     results = []
     for username in usernames:
-        data = scrape_profile(driver, username, gemini_model, ollama_model)
+        data = scrape_profile(driver, username, model, ollama_model)
         if data:
             results.append(data)
         time.sleep(random.randint(*delay_range))
@@ -400,17 +402,15 @@ def extract_username_from_post(driver):
     try:
         wait = WebDriverWait(driver, 10)
         profile_xpath = (
-            "/html/body/div[6]/div[1]/div/div[3]/div/div/div/div/"
-            "div[2]/div/article/div/div[2]/div/div/div[1]/"
-            "div/header/div[2]/div[1]/div[1]/div/div[1]/span/span/span/div/div/a"
+            "/html/body/div[6]/div[1]/div/div[3]/div/div/div/div/div[2]/div/article/div/div[2]/div/div/div[1]/div/header/div[2]/div[1]/div[1]/div/div[1]/span/span/span/div/div/a/div/span"
         )
         
         profile_elem = wait.until(
             EC.presence_of_element_located((By.XPATH, profile_xpath))
         )
         
-        profile_url = profile_elem.get_attribute("href")
-        username = profile_url.rstrip('/').split('/')[-1]
+        username = profile_elem.text.strip()
+        print(f"    👤 Extracted username: @{username}")
         return username
     except:
         return None
@@ -559,7 +559,7 @@ def load_configuration():
     load_dotenv(dotenv_path=env_path)
 
     config = {
-        'ollama_model': os.getenv('OLLAMA_MODEL', 'qwen2.5:14b'),
+        'ollama_model': os.getenv('OLLAMA_MODEL', 'qwen2.5:3b'),
         'instagram_username': os.getenv('INSTAGRAM_USERNAME'),
         'instagram_password': os.getenv('INSTAGRAM_PASSWORD'),
         'max_profiles': int(os.getenv('MAX_PROFILES', '20')),
@@ -596,7 +596,7 @@ def validate_configuration(config):
 # MAIN WORKFLOW FUNCTIONS
 # ============================================================================
 
-def process_single_hashtag(driver, hashtag, max_profiles, gemini_model, ollama_model):
+def process_single_hashtag(driver, hashtag, max_profiles, model, ollama_model):
     """Process a single hashtag: search and scrape profiles"""
     usernames = search_hashtag(driver, hashtag, max_profiles)
     print(f"\n✅ Found {len(usernames)} profiles under #{hashtag}")
@@ -604,7 +604,7 @@ def process_single_hashtag(driver, hashtag, max_profiles, gemini_model, ollama_m
     if not usernames:
         return None
     
-    results = scrape_multiple_profiles(driver, usernames,gemini_model, ollama_model)
+    results = scrape_multiple_profiles(driver, usernames,model, ollama_model)
     
     if results:
         return results
@@ -612,7 +612,7 @@ def process_single_hashtag(driver, hashtag, max_profiles, gemini_model, ollama_m
     return None
 
 
-def process_all_hashtags(driver, hashtags, max_profiles, gemini_model, ollama_model):
+def process_all_hashtags(driver, hashtags, max_profiles, model, ollama_model):
     """Process all hashtags sequentially"""
     
     for idx, hashtag in enumerate(hashtags, 1):
@@ -620,7 +620,7 @@ def process_all_hashtags(driver, hashtags, max_profiles, gemini_model, ollama_mo
         print(f"🏷️  Processing Hashtag {idx}/{len(hashtags)}: #{hashtag}")
         print(f"{'='*60}")
         
-        result = process_single_hashtag(driver, hashtag, max_profiles,gemini_model, ollama_model)
+        result = process_single_hashtag(driver, hashtag, max_profiles,model, ollama_model)
         
         if result:
             return result
@@ -655,7 +655,7 @@ def scrape(hashtags: list):
     
     print_configuration(config)
 
-    gemini_model = init_gemini()
+    qwen_cerebras_model = init_cerebras()
     
     # Check Ollama connection
     ollama_available = check_ollama_connection(config['ollama_model'])
@@ -674,7 +674,7 @@ def scrape(hashtags: list):
             driver,
             hashtags,
             config['max_profiles'],
-            gemini_model,
+            qwen_cerebras_model,
             ollama_model
         )
         
