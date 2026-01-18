@@ -4,3 +4,4 @@ venv
 *.pyc
 .json
 *.sqlite3
+ig_session/

@@ -20,17 +20,19 @@ import os
 from dotenv import load_dotenv
 import ollama
 from bs4 import BeautifulSoup
+from app.utils.gemini import init_gemini , process_with_gemini
 from app.utils.cerebras_ai import init_cerebras , process_with_cerebras
-
 # ============================================================================
 # BROWSER SETUP FUNCTIONS
 # ============================================================================
 
-def create_chrome_options(headless=False):
-    """Create and configure Chrome options for anti-detection"""
+def create_chrome_options(headless=False, profile_dir="ig_session"):
     options = Options()
-    
-    # Anti-detection settings
+
+    # Persist session
+    options.add_argument(f"--user-data-dir={os.path.abspath(profile_dir)}")
+
+    # Anti-detection
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
@@ -38,29 +40,28 @@ def create_chrome_options(headless=False):
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920,1080')
+
     options.add_argument(
-        'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     )
-    
+
     if headless:
-        options.add_argument('--headless')
-    
+        options.add_argument('--headless=new')
+
     return options
 
 
 def initialize_driver(headless=False):
-    """Initialize Selenium WebDriver with anti-detection measures"""
-    print("🚀 Starting browser...")
-    options = create_chrome_options(headless)
+    print("🚀 Starting browser with persisted session...")
+    options = create_chrome_options(headless=headless)
     driver = webdriver.Chrome(options=options)
-    
-    # Remove webdriver property
+
     driver.execute_cdp_cmd(
         'Page.addScriptToEvaluateOnNewDocument',
         {'source': "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"}
     )
-    
+
     return driver
 
 
@@ -343,8 +344,6 @@ def scrape_profile(driver, username, model, ollama_model):
         # Clean HTML
         cleaned_content = clean_html_keep_links(html_content)
         
-        time.sleep(5)
-
         if model:
             # Process with Cerebras
             ai_data = process_with_cerebras(cleaned_content, username, model)
@@ -436,72 +435,73 @@ def close_post_modal(driver):
             return False
 
 
-def search_hashtag(driver, hashtag, max_profiles=20):
-    """Search hashtag and collect profile usernames"""
-    try:
-        print(f"\n🔍 Opening hashtag #{hashtag}")
-        driver.get(f"https://www.instagram.com/explore/tags/{hashtag}/")
-        human_delay(4, 6)
-        
-        scrolls_needed = max(2, (max_profiles // 9) + 1)
-        print(f"📊 Need to collect {max_profiles} profiles, performing {scrolls_needed} scrolls...")
-        
-        scroll_page(driver, scrolls_needed)
-        
-        profile_links = []
-        attempted_posts = 0
-        max_attempts = max_profiles * 3
-        wait = WebDriverWait(driver, 10)
+def search_hashtag(driver, hashtag, max_profiles=100):
+    """
+    Search hashtag and collect EXACT number of unique profile usernames
+    (keeps scrolling until max_profiles is reached or content ends)
+    """
 
-        for row in range(1, 20):
-            if len(profile_links) >= max_profiles:
+    print(f"\n🔍 Opening hashtag #{hashtag}")
+    driver.get(f"https://www.instagram.com/explore/tags/{hashtag}/")
+    human_delay(4, 6)
+
+    collected_usernames = set()
+    collected_posts = set()
+    last_height = 0
+    attempts_without_new = 0
+    MAX_NO_NEW_ATTEMPTS = 5  # safety stop
+
+    wait = WebDriverWait(driver, 10)
+
+    while len(collected_usernames) < max_profiles and attempts_without_new < MAX_NO_NEW_ATTEMPTS:
+
+        # Collect post links
+        posts = driver.find_elements(By.XPATH, "//a[contains(@href, '/p/')]")
+        new_posts_found = False
+
+        for post in posts:
+            if len(collected_usernames) >= max_profiles:
                 break
-                
-            for col in range(1, 4):
-                if len(profile_links) >= max_profiles or attempted_posts >= max_attempts:
-                    break
-                
-                attempted_posts += 1
-                
-                try:
-                    post_xpath = (
-                        f"/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[2]/"
-                        f"section/main/div/div[2]/div[1]/div/div[{row}]/div[{col}]"
-                    )
-                    
-                    # Scroll to post
-                    try:
-                        post = driver.find_element(By.XPATH, post_xpath)
-                        driver.execute_script("arguments[0].scrollIntoView(true);", post)
-                        human_delay(1, 2)
-                    except:
-                        continue
-                    
-                    # Click post
-                    post = wait.until(EC.element_to_be_clickable((By.XPATH, post_xpath)))
-                    post.click()
-                    human_delay(3, 4)
 
-                    # Extract username
-                    username = extract_username_from_post(driver)
-                    
-                    if username and username not in profile_links:
-                        profile_links.append(username)
-                        print(f"  ➕ Found profile #{len(profile_links)}: @{username}")
-                    
-                    # Close modal
-                    close_post_modal(driver)
+            post_link = post.get_attribute("href")
+            if not post_link or post_link in collected_posts:
+                continue
 
-                except Exception as e:
-                    close_post_modal(driver)
-                    continue
+            collected_posts.add(post_link)
+            new_posts_found = True
 
-        print(f"✅ Collected {len(profile_links)} unique profiles (attempted {attempted_posts} posts)")
-        return profile_links[:max_profiles]
+            try:
+                driver.execute_script("arguments[0].scrollIntoView(true);", post)
+                human_delay(1, 2)
+                post.click()
+                human_delay(3, 4)
 
-    except Exception as e:
-        print(f"❌ Error in hashtag processing: {e}")
-        return []
+                username = extract_username_from_post(driver)
+                if username:
+                    if username not in collected_usernames:
+                        collected_usernames.add(username)
+                        print(f"  ➕ {len(collected_usernames)}/{max_profiles} → @{username}")
+
+                close_post_modal(driver)
+
+            except Exception:
+                close_post_modal(driver)
+                continue
+
+        # Scroll more
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        human_delay(3, 5)
+
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height and not new_posts_found:
+            attempts_without_new += 1
+        else:
+            attempts_without_new = 0
+
+        last_height = new_height
+
+    print(f"\n✅ Collected {len(collected_usernames)} unique profiles for #{hashtag}")
+    return list(collected_usernames)[:max_profiles]
 
 
 # ============================================================================
@@ -611,21 +611,40 @@ def process_single_hashtag(driver, hashtag, max_profiles, model, ollama_model):
     
     return None
 
-
 def process_all_hashtags(driver, hashtags, max_profiles, model, ollama_model):
-    """Process all hashtags sequentially"""
+    """Process all hashtags sequentially and aggregate results"""
+    
+    all_results = []
+    hashtag_summary = {}
     
     for idx, hashtag in enumerate(hashtags, 1):
         print(f"\n{'='*60}")
         print(f"🏷️  Processing Hashtag {idx}/{len(hashtags)}: #{hashtag}")
         print(f"{'='*60}")
         
-        result = process_single_hashtag(driver, hashtag, max_profiles,model, ollama_model)
+        result = process_single_hashtag(driver, hashtag, max_profiles, model, ollama_model)
         
         if result:
-            return result
+            # Add hashtag field to each profile
+            for profile in result:
+                profile['source_hashtag'] = hashtag
+            
+            all_results.extend(result)
+            hashtag_summary[hashtag] = len(result)
+            print(f"✅ Collected {len(result)} profiles from #{hashtag}")
+        else:
+            print(f"⚠️ No results from #{hashtag}")
+            hashtag_summary[hashtag] = 0
     
-    return None
+    # Print summary
+    print(f"\n{'='*60}")
+    print(f"📊 PROCESSING COMPLETE")
+    print(f"{'='*60}")
+    for tag, count in hashtag_summary.items():
+        print(f"  #{tag}: {count} profiles")
+    print(f"\n  Total profiles: {len(all_results)}")
+    
+    return all_results if all_results else None
 
 
 def print_final_summary(hashtags, total_profiles, results):
@@ -640,51 +659,57 @@ def print_final_summary(hashtags, total_profiles, results):
     for hashtag, info in results.items():
         print(f"   #{hashtag}: {info['count']} profiles → {info['filename']}")
 
+def is_logged_in(driver):
+    driver.get("https://www.instagram.com/")
+    human_delay(3, 5)
 
+    try:
+        driver.find_element(By.XPATH, "//input[@name='username']")
+        return False
+    except NoSuchElementException:
+        return True
+    
 # ============================================================================
 # MAIN FUNCTION
 # ============================================================================
 
-def scrape(hashtags: list):
-    """Main execution function"""
-    # Load and validate configuration
+def scrape(hashtags: list,max_profiles: int =10):
     config = load_configuration()
-    
+
     if not validate_configuration(config):
         return
-    
+
     print_configuration(config)
 
-    qwen_cerebras_model = init_cerebras()
+    model = init_cerebras()
     
-    # Check Ollama connection
     ollama_available = check_ollama_connection(config['ollama_model'])
     ollama_model = config['ollama_model'] if ollama_available else None
-    
-    # Initialize browser
+
     driver = initialize_driver(config['headless'])
-    
+
     try:
-        # Login to Instagram
-        if not login_to_instagram(driver, config['instagram_username'], config['instagram_password']):
-            return
-        
-        # Process all hashtags
+        if is_logged_in(driver):
+            print("✅ Existing Instagram session detected (no login needed)")
+        else:
+            print("🔐 No session found — please login manually")
+            driver.get("https://www.instagram.com/")
+            input("👉 Login manually, then press ENTER to continue...")
+
         results = process_all_hashtags(
             driver,
             hashtags,
-            config['max_profiles'],
-            qwen_cerebras_model,
+            max_profiles or config['max_profiles'],
+            model,
             ollama_model
         )
-        
+
         return results
-        
+
     finally:
-        # Clean up
         print("\n🔴 Closing browser...")
         driver.quit()
 
 
 if __name__ == "__main__":
-    scrape(hashtags=["nature", "travel", "food"])
+    scrape(hashtags=["smallbusiness", "startup", "entrepreneur"])
