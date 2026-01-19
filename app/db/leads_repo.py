@@ -1,10 +1,11 @@
-from app.db.database import get_db_connection
-
+from datetime import datetime, timezone
 from app.db.database import get_db_connection
 
 def save_leads(leads: list):
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    now = datetime.now(timezone.utc).isoformat()
 
     cursor.executemany("""
         INSERT INTO leads (
@@ -19,9 +20,10 @@ def save_leads(leads: list):
             is_verified,
             is_business,
             category,
-            full_name
+            full_name,
+            created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, [
         (
             lead.get("followers"),
@@ -36,28 +38,10 @@ def save_leads(leads: list):
             int(lead.get("is_business", False)),
             lead.get("category"),
             lead.get("full_name"),
+            now
         )
         for lead in leads
     ])
 
     conn.commit()
     conn.close()
-
-def normalize_lead(lead: dict) -> dict:
-    return {
-        "followers": lead.get("followers") or lead.get("followers_count"),
-        "following": lead.get("following") or lead.get("following_count"),
-        "posts": lead.get("posts") or lead.get("posts_count"),
-
-        "bio": lead.get("bio"),
-        "website": lead.get("website"),
-        "email": lead.get("email"),
-        "phone": lead.get("phone"),
-        "whatsapp": lead.get("whatsapp"),
-
-        "is_verified": lead.get("is_verified", lead.get("isVerified", False)),
-        "is_business": lead.get("is_business", lead.get("isBusiness", False)),
-
-        "category": lead.get("category"),
-        "full_name": lead.get("full_name") or lead.get("fullName"),
-    }

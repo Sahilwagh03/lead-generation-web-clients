@@ -23,6 +23,9 @@ const Page = () => {
           </Link>
         </div>
       </div>
+      <div>
+        <h2 className="text-xl font-semibold">Todays Leads</h2>
+      </div>
     </div>
   );
 };

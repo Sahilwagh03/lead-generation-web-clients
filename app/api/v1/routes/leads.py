@@ -25,7 +25,7 @@ def generate_leads(request: HashtagRequest):
         leads = scrape(request.hashtags, request.max_profiles)
         if leads:
             save_leads(leads)
-            return {"status": "success", "leads_count": len(leads) , "leads": leads}
+            return {"status": "success", "leads_count": len(leads)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     

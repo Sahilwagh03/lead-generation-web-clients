@@ -35,7 +35,7 @@ const LeadGeneration = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col gap-6">
+    <div className="min-h-screen flex flex-col gap-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
@@ -115,9 +115,6 @@ const LeadGeneration = () => {
           </Button>
         </CardContent>
       </Card>
-      {data?.leads && data.leads.length > 0 && (
-        <LeadTable data={data?.leads || []} />
-      )}
     </div>
   );
 };

@@ -29,7 +29,8 @@ def init_db():
         is_verified INTEGER NOT NULL DEFAULT 0,
         is_business INTEGER NOT NULL DEFAULT 0,
         category TEXT,
-        full_name TEXT
+        full_name TEXT,
+        created_at TEXT NOT NULL
     )
     """)
 
