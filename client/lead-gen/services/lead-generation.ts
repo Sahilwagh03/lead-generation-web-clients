@@ -14,3 +14,16 @@ export const generateLeads = async (
 
   return data;
 };
+
+export const getLeads = async (
+  limit: number,
+  offset: number
+): Promise<GenerateLeadsResponse> => {
+  const { data } = await api.get<GenerateLeadsResponse>(
+    `/api/v1/leads/get-leads`,
+    {
+      params: { limit, offset },
+    }
+  );
+  return data;
+};

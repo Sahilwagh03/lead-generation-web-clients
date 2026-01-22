@@ -20,8 +20,10 @@ import os
 from dotenv import load_dotenv
 import ollama
 from bs4 import BeautifulSoup
-from app.utils.gemini import init_gemini , process_with_gemini
 from app.utils.cerebras_ai import init_cerebras , process_with_cerebras
+from app.db.leads_repo import save_leads
+from typing import List
+
 # ============================================================================
 # BROWSER SETUP FUNCTIONS
 # ============================================================================
@@ -711,5 +713,18 @@ def scrape(hashtags: list,max_profiles: int =10):
         driver.quit()
 
 
-if __name__ == "__main__":
-    scrape(hashtags=["smallbusiness", "startup", "entrepreneur"])
+def run_scrape_job(hashtags: List[str], max_profiles: int):
+    print("🟢 Background scraping started")
+
+    try:
+        results = scrape(hashtags, max_profiles)
+
+        if results:
+            print(f"✅ Scraping completed. Total leads: {len(results)}")
+            save_leads(results)
+            print("💾 Leads saved successfully")
+        else:
+            print("⚠️ No leads found")
+
+    except Exception as e:
+        print(f"❌ Background scrape failed: {e}")
