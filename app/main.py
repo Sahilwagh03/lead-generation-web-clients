@@ -14,6 +14,7 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",  # React frontend
     "http://127.0.0.1:3000",  # Alternative localhost
+    "https://lead-generation-web-clients.vercel.app"
     # Add other origins as needed for production:
     # "https://yourfrontenddomain.com",
 ]
