@@ -53,6 +53,11 @@ def create_chrome_options(headless=False, profile_dir="ig_session"):
 
     return options
 
+def reset_session(profile_dir="ig_session"):
+    if os.path.exists(profile_dir):
+        print("♻️ Resetting corrupted Instagram session")
+        import shutil
+        shutil.rmtree(profile_dir)
 
 def initialize_driver(headless=False):
     print("🚀 Starting browser with persisted session...")
@@ -100,45 +105,109 @@ def slow_type(element, text):
 # AUTHENTICATION FUNCTIONS
 # ============================================================================
 
-def login_to_instagram(driver, username, password):
-    """Login to Instagram with given credentials"""
-    try:
-        print("📱 Opening Instagram...")
-        driver.get("https://www.instagram.com/")
-        human_delay(3, 5)
-        
-        # Handle cookie consent if present
+
+def find_first_element(driver, wait, selectors):
+    """Try multiple selectors and return the first that works"""
+    for by, value in selectors:
         try:
-            driver.find_element(
-                By.XPATH, "//button[contains(text(), 'Allow') or contains(text(), 'Accept')]"
-            ).click()
+            return wait.until(EC.presence_of_element_located((by, value)))
+        except TimeoutException:
+            continue
+    return None
+
+
+def click_if_exists(driver, selectors):
+    for by, value in selectors:
+        try:
+            driver.find_element(by, value).click()
+            return True
         except:
-            pass
-        
-        print("🔐 Logging in...")
-        wait = WebDriverWait(driver, 10)
-        
-        # Enter username
-        username_input = wait.until(
-            EC.presence_of_element_located((By.NAME, "username"))
+            continue
+    return False
+
+
+def login_to_instagram(driver, username, password, timeout=15):
+    print("📱 Opening Instagram...")
+    driver.get("https://www.instagram.com/")
+    wait = WebDriverWait(driver, timeout)
+    time.sleep(3)
+
+    # -------------------------------
+    # 1. Handle cookies (all variants)
+    # -------------------------------
+    click_if_exists(driver, [
+        (By.XPATH, "//button[contains(text(),'Allow')]"),
+        (By.XPATH, "//button[contains(text(),'Accept')]"),
+        (By.XPATH, "//button[contains(text(),'Only allow essential')]"),
+        (By.XPATH, "//button[contains(text(),'Decline')]"),
+    ])
+
+    print("🔐 Attempting login...")
+
+    # -------------------------------
+    # 2. Username field (fallbacks)
+    # -------------------------------
+    username_input = find_first_element(driver, wait, [
+        (By.NAME, "username"),
+        (By.NAME, "email"),
+        (By.XPATH, "//input[@aria-label='Phone number, username, or email']"),
+        (By.XPATH, "//input[contains(@placeholder,'username')]"),
+        (By.XPATH, "//input[contains(@name,'user')]"),
+    ])
+
+    if not username_input:
+        raise Exception("❌ Username input not found")
+
+    username_input.clear()
+    slow_type(username_input, username)
+    time.sleep(1)
+
+    # -------------------------------
+    # 3. Password field (fallbacks)
+    # -------------------------------
+    password_input = find_first_element(driver, wait, [
+        (By.NAME, "password"),
+        (By.NAME, "pass"),
+        (By.XPATH, "//input[@aria-label='Password']"),
+        (By.XPATH, "//input[@type='password']"),
+    ])
+
+    if not password_input:
+        raise Exception("❌ Password input not found")
+
+    password_input.clear()
+    slow_type(password_input, password)
+
+    # -------------------------------
+    # 4. Login button (fallbacks)
+    # -------------------------------
+    clicked = click_if_exists(driver, [
+        (By.XPATH, "//button[@type='submit']"),
+        (By.XPATH, "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div/div/div/div[1]/div/div[3]/div/div/div/div/div/div/div/div/div[2]/form/div/div[1]/div/div[3]/div/div"),
+        (By.XPATH, "//button/div[text()='Log in']/parent::button"),
+        (By.XPATH, "//button[contains(text(),'Log in')]"),
+    ])
+
+    if not clicked:
+        raise Exception("❌ Login button not found")
+
+    # -------------------------------
+    # 5. Confirm login success
+    # -------------------------------
+    try:
+        wait.until(
+            EC.any_of(
+                EC.url_contains("/accounts/"),
+                EC.url_contains("/challenge/"),
+                EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Search']")),
+                EC.presence_of_element_located((By.XPATH, "//a[contains(@href,'/direct')]")),
+            )
         )
-        slow_type(username_input, username)
-        human_delay(1, 2)
-        
-        # Enter password
-        password_input = driver.find_element(By.NAME, "password")
-        slow_type(password_input, password)
-        human_delay(1, 2)
-        
-        # Submit login
-        driver.find_element(By.XPATH, "//button[@type='submit']").click()
-        human_delay(5, 8)
-        
         print("✅ Login successful!")
         return True
-        
-    except Exception as e:
-        print(f"❌ Login failed: {e}")
+
+    except TimeoutException:
+        print("⚠️ Login may require verification or failed")
         return False
 
 
@@ -661,16 +730,44 @@ def print_final_summary(hashtags, total_profiles, results):
     for hashtag, info in results.items():
         print(f"   #{hashtag}: {info['count']} profiles → {info['filename']}")
 
-def is_logged_in(driver):
+def is_logged_in(driver, timeout=10) -> bool:
     driver.get("https://www.instagram.com/")
     human_delay(3, 5)
 
+    wait = WebDriverWait(driver, timeout)
+
+    # 1️⃣ Hard fail: login form exists
     try:
-        driver.find_element(By.XPATH, "//input[@name='username']")
+        driver.find_element(By.NAME, "username")
+        print("🔐 Login form detected → NOT logged in")
         return False
     except NoSuchElementException:
-        return True
-    
+        pass
+
+    # 2️⃣ Logged-in indicators (ANY one is enough)
+    logged_in_indicators = [
+        (By.XPATH, "//a[contains(@href,'/direct')]"),      # DM icon
+        (By.XPATH, "//svg[@aria-label='New post']"),       # + create
+        (By.XPATH, "//input[@placeholder='Search']"),     # search bar
+        (By.XPATH, "//img[contains(@alt,'profile')]"),    # avatar
+    ]
+
+    for by, xpath in logged_in_indicators:
+        try:
+            wait.until(EC.presence_of_element_located((by, xpath)))
+            print("✅ Logged-in UI detected")
+            return True
+        except TimeoutException:
+            continue
+
+    # 3️⃣ Challenge / verification
+    if "challenge" in driver.current_url:
+        print("⚠️ Instagram challenge page detected")
+        return False
+
+    print("❌ Unable to confirm login → treating as logged out")
+    return False
+
 # ============================================================================
 # MAIN FUNCTION
 # ============================================================================
@@ -691,12 +788,12 @@ def scrape(hashtags: list,max_profiles: int =10):
     driver = initialize_driver(config['headless'])
 
     try:
-        if is_logged_in(driver):
-            print("✅ Existing Instagram session detected (no login needed)")
-        else:
-            print("🔐 No session found — please login manually")
-            driver.get("https://www.instagram.com/")
-            input("👉 Login manually, then press ENTER to continue...")
+        if not is_logged_in(driver):
+            login_to_instagram(
+                driver,
+                username=config['instagram_username'],
+                password=config['instagram_password']
+            )
 
         results = process_all_hashtags(
             driver,

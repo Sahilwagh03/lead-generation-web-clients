@@ -54,6 +54,9 @@ export default function LeadTable({ data }: Props) {
       <Table>
         <TableHeader>
           <TableRow>
+            {/* ✅ Number column */}
+            <TableHead className="w-12 text-center">#</TableHead>
+
             {visibleColumns.map((key) => (
               <TableHead key={key}>{FIELD_LABELS[key]}</TableHead>
             ))}
@@ -63,6 +66,11 @@ export default function LeadTable({ data }: Props) {
         <TableBody>
           {data.map((row, index) => (
             <TableRow key={index}>
+              {/* ✅ Number cell */}
+              <TableCell className="text-center font-medium text-muted-foreground">
+                {index + 1}
+              </TableCell>
+
               {visibleColumns.map((key) => (
                 <TableCell
                   key={key}

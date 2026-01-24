@@ -8,7 +8,7 @@ export const generateLeads = async (
   payload: GenerateLeadsRequest
 ): Promise<GenerateLeadsResponse> => {
   const { data } = await api.post<GenerateLeadsResponse>(
-    "/api/v1/leads/generate-leads",
+    "leads/generate-leads",
     payload
   );
 
@@ -20,7 +20,7 @@ export const getLeads = async (
   offset: number
 ): Promise<GenerateLeadsResponse> => {
   const { data } = await api.get<GenerateLeadsResponse>(
-    `/api/v1/leads/get-leads`,
+    `leads/get-leads`,
     {
       params: { limit, offset },
     }
