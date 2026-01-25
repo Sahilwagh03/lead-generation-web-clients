@@ -617,17 +617,7 @@ def save_results(data, filename_prefix):
 
 def load_configuration():
     """Load configuration from .env file at project root"""
-    # Get project root reliably (two levels up from this file)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
-
-    env_path = os.path.join(project_root, '.env')
-    print(f"📄 Loading .env from: {env_path}")  # debug
-
-    if not os.path.exists(env_path):
-        print("❌ .env file not found at project root!")
-    
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv()  # auto-loads .env from project root
 
     config = {
         'ollama_model': os.getenv('OLLAMA_MODEL', 'qwen2.5:3b'),
@@ -637,12 +627,6 @@ def load_configuration():
         'headless': os.getenv('HEADLESS', 'false').lower() == 'true'
     }
 
-    # Debug: print what was loaded
-    print(f"🔑 Instagram username: {config['instagram_username']}")
-    print(f"🤖 Ollama model: {config['ollama_model']}")
-    print(f"🖥️ Headless: {config['headless']}")
-    print(f"📄 Max profiles: {config['max_profiles']}")
-    
     return config
 
 def print_configuration(config):
