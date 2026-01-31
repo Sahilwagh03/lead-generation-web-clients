@@ -1,20 +1,21 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getLeads } from '@/services/lead-generation'
-import { Lead } from "@/types/leads";
+import { getLeads } from "@/services/lead-generation";
+import { GetLeadsResponse } from "@/types/leads";
 
 interface UseLeadsParams {
-  limit?: number;
-  offset?: number;
+  page?: number;
+  pageSize?: number;
 }
 
 export const useLeads = ({
-  limit = 50,
-  offset = 0,
+  page = 1,
+  pageSize = 20,
 }: UseLeadsParams = {}) => {
-  return useQuery<{leads:Lead[]}>({
-    queryKey: ["leads", limit, offset],
-    queryFn: () => getLeads(limit, offset),
+  return useQuery<GetLeadsResponse>({
+    queryKey: ["leads", page, pageSize],
+    queryFn: () => getLeads(page, pageSize),
+    placeholderData: (previousData) => previousData,
   });
 };

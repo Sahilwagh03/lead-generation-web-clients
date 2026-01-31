@@ -14,37 +14,30 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Hash } from "lucide-react";
 import { useGenerateLeads } from "@/hooks/use-generate-leads";
-import LeadTable from "@/components/dashboard/lead-table";
+import { SectionHeader } from "@/components/dashboard/section-header";
 
 const LeadGeneration = () => {
-  const [hashtags, setHashtags] = useState("");
+  const [hashtag, setHashtag] = useState("");
   const [maxProfiles, setMaxProfiles] = useState("50");
 
-  const { generate, data, loading, error, success } = useGenerateLeads();
+  const { generate, loading } = useGenerateLeads();
 
   const handleScrape = () => {
-    if (!hashtags.trim()) return;
+    if (!hashtag.trim()) return;
 
     generate({
-      hashtags: hashtags
-        .split(",")
-        .map((h) => h.trim())
-        .filter(Boolean),
+      hashtag: hashtag,
       max_profiles: Number(maxProfiles) || 10,
     });
   };
 
   return (
     <div className="min-h-screen flex flex-col gap-6 overflow-x-hidden">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
-          Hashtag Lead Finder
-        </h1>
-        <p className="text-muted-foreground max-w-xl">
-          Turn Instagram hashtags into qualified business leads in minutes.
-        </p>
-      </div>
+      
+      <SectionHeader
+        title="Hashtag Lead Finder"
+        description="Turn Instagram hashtags into qualified business leads in minutes."
+      />
 
       <Card className="rounded-lg py-4 gap-4">
         <CardHeader className="px-4">
@@ -64,9 +57,9 @@ const LeadGeneration = () => {
             <Label htmlFor="hashtags">Hashtags</Label>
             <Input
               id="hashtags"
-              placeholder="interiordesign, homedecor, furniture"
-              value={hashtags}
-              onChange={(e) => setHashtags(e.target.value)}
+              placeholder="interiordesign"
+              value={hashtag}
+              onChange={(e) => setHashtag(e.target.value)}
             />
             <p className="text-sm text-muted-foreground">
               Separate multiple hashtags using commas.
@@ -88,21 +81,11 @@ const LeadGeneration = () => {
             </p>
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600">{"Failed to scrape leads"}</p>
-          )}
-
-          {success && data && (
-            <p className="text-sm text-green-600">
-              ✅ {data.leads_count} leads scraped successfully
-            </p>
-          )}
-
           <Button
             className="w-full"
             size="lg"
             onClick={handleScrape}
-            disabled={loading || !hashtags.trim()}
+            disabled={loading || !hashtag.trim()}
           >
             {loading ? (
               <>

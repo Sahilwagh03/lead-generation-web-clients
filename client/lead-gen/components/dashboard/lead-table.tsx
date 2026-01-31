@@ -9,11 +9,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Lead } from "@/types/leads";
+import { Lead, PaginationMeta } from "@/types/leads";
 import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
+import TablePagination from "./TablePagination";
 
 type Props = {
   data: Lead[];
+  pagination: PaginationMeta;
+  onPageChange: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
 };
 
 const WIDE_COLUMNS = ["bio", "pitch_angle"];
@@ -26,7 +37,6 @@ const FIELD_LABELS: Record<keyof Lead, string> = {
   followers: "Followers",
   following: "Following",
   posts: "Posts",
-  bio: "Bio",
   website: "Website",
   email: "Email",
   phone: "Phone",
@@ -34,6 +44,7 @@ const FIELD_LABELS: Record<keyof Lead, string> = {
   is_verified: "Verified",
   is_business: "Business",
   category: "Category",
+  bio: "Bio",
   source_hashtag: "Hashtag",
   lead_type: "Lead Type",
   platform_detected: "Platform",
@@ -42,7 +53,7 @@ const FIELD_LABELS: Record<keyof Lead, string> = {
   pitch_angle: "Pitch Angle",
 };
 
-export default function LeadTable({ data }: Props) {
+export default function LeadTable({ data, pagination, onPageChange }: Props) {
   if (!data?.length) return null;
 
   const visibleColumns = Object.keys(FIELD_LABELS).filter((key) =>
@@ -51,12 +62,11 @@ export default function LeadTable({ data }: Props) {
 
   return (
     <div className="rounded-lg overflow-hidden border bg-background">
+      {/* TABLE */}
       <Table>
         <TableHeader>
           <TableRow>
-            {/* ✅ Number column */}
             <TableHead className="w-12 text-center">#</TableHead>
-
             {visibleColumns.map((key) => (
               <TableHead key={key}>{FIELD_LABELS[key]}</TableHead>
             ))}
@@ -66,9 +76,8 @@ export default function LeadTable({ data }: Props) {
         <TableBody>
           {data.map((row, index) => (
             <TableRow key={index}>
-              {/* ✅ Number cell */}
-              <TableCell className="text-center font-medium text-muted-foreground">
-                {index + 1}
+              <TableCell className="text-center text-muted-foreground">
+                {(pagination.page - 1) * pagination.page_size + index + 1}
               </TableCell>
 
               {visibleColumns.map((key) => (
@@ -86,6 +95,8 @@ export default function LeadTable({ data }: Props) {
           ))}
         </TableBody>
       </Table>
+
+      <TablePagination pagination={pagination} onPageChange={onPageChange} />
     </div>
   );
 }

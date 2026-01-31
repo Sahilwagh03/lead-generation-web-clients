@@ -6,25 +6,24 @@ import Link from "next/link";
 
 import { useLeads } from "@/hooks/useLeads";
 import LeadTable from "@/components/dashboard/lead-table";
+import { useState } from "react";
+import { SectionHeader } from "@/components/dashboard/section-header";
 
-const Page = () => {
+const DashboardPage = () => {
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useLeads({
-    limit: 50,
-    offset: 0,
+    page,
+    pageSize: 20,
   });
 
   return (
     <div className="min-h-screen flex flex-col gap-4">
-      {/* Header */}
       <div className="mb-2 flex lg:items-center flex-col lg:flex-row justify-between gap-2">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
-            Welcome to Dashboard
-          </h1>
-          <p className="lg:mt-2 text-md text-gray-600">
-            Convert leads in real-time with our comprehensive dashboard.
-          </p>
-        </div>
+        <SectionHeader
+          title="Welcome to Dashboard"
+          description="Convert leads in real-time with our comprehensive dashboard."
+        />
 
         <Link href="/dashboard/lead-generation">
           <Button className="cursor-pointer">
@@ -36,14 +35,18 @@ const Page = () => {
 
       <div className="flex flex-col gap-2">
         <h2 className="text-2xl font-semibold">Leads</h2>
-        {isLoading && (
-          <p className="text-sm text-gray-500">Loading leads...</p>
-        )}
+        {isLoading && <p className="text-sm text-gray-500">Loading leads...</p>}
 
-        {data?.leads && <LeadTable data={data.leads} />}
+        {data && (
+          <LeadTable
+            data={data.leads}
+            pagination={data.pagination}
+            onPageChange={setPage}
+          />
+        )}
       </div>
     </div>
   );
 };
 
-export default Page;
+export default DashboardPage;

@@ -10,7 +10,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException ,StaleElementReferenceException
 import time
 import random
 import pandas as pd
@@ -504,76 +504,106 @@ def close_post_modal(driver):
             return True
         except:
             return False
-
-
-def search_hashtag(driver, hashtag, max_profiles=100):
-    """
-    Search hashtag and collect EXACT number of unique profile usernames
-    (keeps scrolling until max_profiles is reached or content ends)
-    """
-
+        
+def search_hashtag(
+    driver,
+    hashtag,
+    max_profiles=100,
+    max_scrolls=10,
+    max_same_username_repeat=20
+):
     print(f"\n🔍 Opening hashtag #{hashtag}")
     driver.get(f"https://www.instagram.com/explore/tags/{hashtag}/")
     human_delay(4, 6)
 
     collected_usernames = set()
     collected_posts = set()
-    last_height = 0
-    attempts_without_new = 0
-    MAX_NO_NEW_ATTEMPTS = 5  # safety stop
 
-    wait = WebDriverWait(driver, 10)
+    scroll_count = 0
+    no_new_usernames_rounds = 0
+    MAX_NO_NEW_ROUNDS = 3
 
-    while len(collected_usernames) < max_profiles and attempts_without_new < MAX_NO_NEW_ATTEMPTS:
+    last_username = None
+    same_username_count = 0
 
-        # Collect post links
+    while scroll_count < max_scrolls and len(collected_usernames) < max_profiles:
+
+        print(f"\n📜 Scroll round {scroll_count + 1}/{max_scrolls}")
+
         posts = driver.find_elements(By.XPATH, "//a[contains(@href, '/p/')]")
-        new_posts_found = False
+        new_usernames_this_round = 0
 
         for post in posts:
             if len(collected_usernames) >= max_profiles:
                 break
 
-            post_link = post.get_attribute("href")
-            if not post_link or post_link in collected_posts:
-                continue
-
-            collected_posts.add(post_link)
-            new_posts_found = True
-
             try:
-                driver.execute_script("arguments[0].scrollIntoView(true);", post)
+                post_link = post.get_attribute("href")
+                if not post_link or post_link in collected_posts:
+                    continue
+
+                collected_posts.add(post_link)
+
+                driver.execute_script(
+                    "arguments[0].scrollIntoView({block:'center'});", post
+                )
                 human_delay(1, 2)
                 post.click()
                 human_delay(3, 4)
 
                 username = extract_username_from_post(driver)
+
                 if username:
+                    # 🔁 SAME USERNAME DETECTION
+                    if username == last_username:
+                        same_username_count += 1
+                        print(
+                            f"⚠️ Same username @{username} repeated "
+                            f"{same_username_count}/{max_same_username_repeat}"
+                        )
+                    else:
+                        same_username_count = 0
+                        last_username = username
+
+                    if same_username_count >= max_same_username_repeat:
+                        print(
+                            f"🛑 @{username} repeated {max_same_username_repeat} times "
+                            "→ stopping early"
+                        )
+                        return list(collected_usernames)
+
                     if username not in collected_usernames:
                         collected_usernames.add(username)
-                        print(f"  ➕ {len(collected_usernames)}/{max_profiles} → @{username}")
+                        new_usernames_this_round += 1
+                        print(
+                            f"  ➕ {len(collected_usernames)}/{max_profiles} → @{username}"
+                        )
 
                 close_post_modal(driver)
 
+            except StaleElementReferenceException:
+                continue
             except Exception:
                 close_post_modal(driver)
                 continue
 
-        # Scroll more
+        # 📉 No progress detection
+        if new_usernames_this_round == 0:
+            no_new_usernames_rounds += 1
+            print("⚠️ No new usernames found this round")
+        else:
+            no_new_usernames_rounds = 0
+
+        if no_new_usernames_rounds >= MAX_NO_NEW_ROUNDS:
+            print("🛑 No new profiles after multiple scrolls → stopping early")
+            break
+
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         human_delay(3, 5)
+        scroll_count += 1
 
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        if new_height == last_height and not new_posts_found:
-            attempts_without_new += 1
-        else:
-            attempts_without_new = 0
-
-        last_height = new_height
-
-    print(f"\n✅ Collected {len(collected_usernames)} unique profiles for #{hashtag}")
-    return list(collected_usernames)[:max_profiles]
-
+    print(f"\n✅ Collected {len(collected_usernames)} profiles for #{hashtag}")
+    return list(collected_usernames)
 
 # ============================================================================
 # DATA EXPORT FUNCTIONS
@@ -666,30 +696,29 @@ def process_single_hashtag(driver, hashtag, max_profiles, model, ollama_model):
     
     return None
 
-def process_all_hashtags(driver, hashtags, max_profiles, model, ollama_model):
+def process_all_hashtags(driver, hashtag, max_profiles, model, ollama_model):
     """Process all hashtags sequentially and aggregate results"""
     
     all_results = []
     hashtag_summary = {}
     
-    for idx, hashtag in enumerate(hashtags, 1):
-        print(f"\n{'='*60}")
-        print(f"🏷️  Processing Hashtag {idx}/{len(hashtags)}: #{hashtag}")
-        print(f"{'='*60}")
+    print(f"\n{'='*60}")
+    print(f"🏷️  Processing Hashtag  #{hashtag}")
+    print(f"{'='*60}")
+    
+    result = process_single_hashtag(driver, hashtag, max_profiles, model, ollama_model)
+    
+    if result:
+        # Add hashtag field to each profile
+        for profile in result:
+            profile['source_hashtag'] = hashtag
         
-        result = process_single_hashtag(driver, hashtag, max_profiles, model, ollama_model)
-        
-        if result:
-            # Add hashtag field to each profile
-            for profile in result:
-                profile['source_hashtag'] = hashtag
-            
-            all_results.extend(result)
-            hashtag_summary[hashtag] = len(result)
-            print(f"✅ Collected {len(result)} profiles from #{hashtag}")
-        else:
-            print(f"⚠️ No results from #{hashtag}")
-            hashtag_summary[hashtag] = 0
+        all_results.extend(result)
+        hashtag_summary[hashtag] = len(result)
+        print(f"✅ Collected {len(result)} profiles from #{hashtag}")
+    else:
+        print(f"⚠️ No results from #{hashtag}")
+        hashtag_summary[hashtag] = 0
     
     # Print summary
     print(f"\n{'='*60}")
@@ -756,7 +785,7 @@ def is_logged_in(driver, timeout=10) -> bool:
 # MAIN FUNCTION
 # ============================================================================
 
-def scrape(hashtags: list,max_profiles: int =10):
+def scrape(hashtag: str, max_profiles: int =10):
     config = load_configuration()
 
     if not validate_configuration(config):
@@ -781,7 +810,7 @@ def scrape(hashtags: list,max_profiles: int =10):
 
         results = process_all_hashtags(
             driver,
-            hashtags,
+            hashtag,
             max_profiles or config['max_profiles'],
             model,
             ollama_model
@@ -794,11 +823,11 @@ def scrape(hashtags: list,max_profiles: int =10):
         driver.quit()
 
 
-def run_scrape_job(hashtags: List[str], max_profiles: int):
+def run_scrape_job(hashtag: str, max_profiles: int):
     print("🟢 Background scraping started")
 
     try:
-        results = scrape(hashtags, max_profiles)
+        results = scrape(hashtag, max_profiles)
 
         if results:
             print(f"✅ Scraping completed. Total leads: {len(results)}")

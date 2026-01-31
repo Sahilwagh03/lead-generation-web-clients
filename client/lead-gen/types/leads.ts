@@ -1,4 +1,3 @@
-
 export interface Lead {
   username?: string;
   full_name?: string;
@@ -21,16 +20,30 @@ export interface Lead {
   website_phones?: string[];
   tags?: string[];
   pitch_angle?: string;
-};
-
+}
 
 export interface GenerateLeadsRequest {
-  hashtags: string[];
+  hashtag: string;
   max_profiles: number;
 }
 
 export interface GenerateLeadsResponse {
   status: "success";
-  leads_count: number;
-  leads: Lead[];
+  message: string;
+  hashtag: string;
 }
+
+export interface GetLeadsResponse {
+  leads: Lead[];
+  pagination: PaginationMeta;
+  filtered_by?: Record<string, any>;
+}
+
+export type PaginationMeta = {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+};

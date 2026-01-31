@@ -1,29 +1,26 @@
 import { api } from "@/lib/api";
-import {
-  GenerateLeadsRequest,
-  GenerateLeadsResponse,
-} from "@/types/leads";
+import { GenerateLeadsRequest, GenerateLeadsResponse, GetLeadsResponse } from "@/types/leads";
 
 export const generateLeads = async (
-  payload: GenerateLeadsRequest
+  payload: GenerateLeadsRequest,
 ): Promise<GenerateLeadsResponse> => {
   const { data } = await api.post<GenerateLeadsResponse>(
     "leads/generate-leads",
-    payload
+    payload,
   );
 
   return data;
 };
 
 export const getLeads = async (
-  limit: number,
-  offset: number
-): Promise<GenerateLeadsResponse> => {
-  const { data } = await api.get<GenerateLeadsResponse>(
-    `leads/get-leads`,
-    {
-      params: { limit, offset },
-    }
-  );
+  page: number,
+  pageSize: number,
+): Promise<GetLeadsResponse> => {
+  const { data } = await api.get<GetLeadsResponse>(`leads/get-leads`, {
+    params: {
+      page,
+      page_size: pageSize,
+    },
+  });
   return data;
 };

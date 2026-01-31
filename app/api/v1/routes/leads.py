@@ -12,25 +12,26 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 class HashtagRequest(BaseModel):
-    hashtags: List[str]
+    hashtag: str
     max_profiles: int = 10
 class LeadsRequest(BaseModel):
     leads: List[Dict[str, Any]]
 
 @router.post("/generate-leads")
 def generate_leads(request: HashtagRequest):
-    if not request.hashtags:
+    if not request.hashtag:
         raise HTTPException(
             status_code=400,
             detail="Hashtags list cannot be empty"
         )
 
-    enqueue_scrape_job(request.hashtags, request.max_profiles)
-
+    print("Queued scrape job")
+    enqueue_scrape_job(request.hashtag, request.max_profiles)
+    
     return {
         "status": "accepted",
         "message": "Lead generation job queued",
-        "hashtags": request.hashtags
+        "hashtag": request.hashtag,
     }
 
 @router.post("/process-leads")
@@ -78,56 +79,62 @@ async def api_process_leads(request: LeadsRequest):
 
 @router.get("/get-leads")
 def fetch_leads(
-    limit: int = Query(50, ge=1, le=100, description="Number of records to return"),
-    offset: int = Query(0, ge=0, description="Number of records to skip"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Records per page"),
     is_verified: Optional[bool] = Query(None, description="Filter by verification status"),
     is_business: Optional[bool] = Query(None, description="Filter by business type"),
     date_filter: Optional[DateFilter] = Query(None, description="Preset date filter"),
     start_date: Optional[date] = Query(None, description="Custom start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Custom end date (YYYY-MM-DD)"),
-    search: Optional[str] = Query(None, min_length=1, max_length=100, description="Search term")
+    search: Optional[str] = Query(None, min_length=1, max_length=100, description="Search term"),
 ):
     """
-    Fetch leads with multiple filtering options.
-    
-    Example queries:
-    - /get-leads?date_filter=today
-    - /get-leads?start_date=2024-01-01&end_date=2024-01-31
-    - /get-leads?is_verified=true&date_filter=this_week
-    - /get-leads?search=john&is_business=true
+    Fetch leads with filters + pagination
+
+    Examples:
+    - /get-leads?page=1&page_size=20
+    - /get-leads?page=2&is_verified=true
+    - /get-leads?page=1&search=john
     """
     try:
-        leads = get_all_leads(
-            limit=limit,
+        offset = (page - 1) * page_size
+
+        leads, total = get_all_leads(
+            limit=page_size,
             offset=offset,
             is_verified=is_verified,
             is_business=is_business,
             date_filter=date_filter.value if date_filter else None,
             start_date=start_date,
             end_date=end_date,
-            search=search
+            search=search,
+            return_total=True  # 👈 important
         )
-        
+
+        total_pages = (total + page_size - 1) // page_size
+
         return {
             "leads": leads,
-            "count": len(leads),
-            "limit": limit,
-            "offset": offset,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1,
+            },
             "filters": {
                 "is_verified": is_verified,
                 "is_business": is_business,
                 "date_filter": date_filter,
                 "start_date": start_date,
                 "end_date": end_date,
-                "search": search
-            }
+                "search": search,
+            },
         }
+
     except HTTPException:
         raise
     except Exception as e:
-        # Log the actual error for debugging
-        print(f"Error fetching leads: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        print(f"Error fetching leads: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

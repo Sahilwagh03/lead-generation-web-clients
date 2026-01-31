@@ -11,11 +11,11 @@ def queue_worker():
     print("🟢 Lead Queue Worker started")
     while True:
         # Get next job (blocking)
-        hashtags, max_profiles = LEAD_QUEUE.get()
+        hashtag, max_profiles = LEAD_QUEUE.get()
         try:
-            print(f"📥 Processing queued job: {hashtags}")
-            run_scrape_job(hashtags, max_profiles)
-            print(f"✅ Finished job: {hashtags}")
+            print(f"📥 Processing queued job: {hashtag}")
+            run_scrape_job(hashtag, max_profiles)
+            print(f"✅ Finished job: {hashtag}")
         except Exception as e:
             print(f"❌ Error in queued job: {e}")
         finally:
@@ -28,6 +28,6 @@ worker_thread.start()
 
 
 # Function to enqueue a new job
-def enqueue_scrape_job(hashtags: List[str], max_profiles: int):
-    LEAD_QUEUE.put((hashtags, max_profiles))
-    print(f"🟢 Job queued: {hashtags}")
+def enqueue_scrape_job(hashtag: str, max_profiles: int):
+    LEAD_QUEUE.put((hashtag, max_profiles))
+    print(f"🟢 Job queued: {hashtag}")
