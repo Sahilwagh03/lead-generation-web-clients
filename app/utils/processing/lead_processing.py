@@ -12,6 +12,13 @@ import re
 from typing import List, Dict, Any, Optional, Tuple
 from functools import lru_cache
 from urllib.parse import urlparse
+import phonenumbers
+from requests import Session
+
+from app.constants.batch_status import BatchStatus
+from app.controllers.leads import get_all_leads
+from app.crud.leads import bulk_update_leads
+from app.crud.scraping_batch import update_batch_status
 
 # -----------------------------
 # AGGRESSIVE Performance Config
@@ -80,20 +87,17 @@ PHONE_REGEX = re.compile(
     re.IGNORECASE
 )
 
-def extract_phones_fast(html: str) -> List[str]:
-    """Optimized phone extraction - single regex pass."""
-    phones = set()
-    
-    # Single regex search (much faster than multiple patterns)
-    for match in PHONE_REGEX.finditer(html):
-        phone = match.group(0)
-        cleaned = re.sub(r'[^\d+]', '', phone)
-        digits_only = cleaned.replace('+', '')
-        
-        if 7 <= len(digits_only) <= 15:
-            phones.add(cleaned)
-    
-    return list(phones)[:5]  # Limit to first 5 phones found
+def extract_phones(text: str, region: str = "IN") -> list[str]:
+    phones = []
+
+    for match in phonenumbers.PhoneNumberMatcher(text or "", region):
+        number = phonenumbers.format_number(
+            match.number,
+            phonenumbers.PhoneNumberFormat.E164
+        )
+        phones.append(number)
+
+    return list(set(phones))
 
 # -----------------------------
 # Platform detection from URL (instant)
@@ -244,7 +248,7 @@ async def classify_lead_async(
 # -----------------------------
 # ULTRA-FAST main function
 # -----------------------------
-async def process_leads(data: List[Dict[str, Any]]) -> Dict[str, Any]:
+async def process_leads(db:Session , batch_id: int) -> Dict[str, Any]:
     """
     OPTIMIZED: Processes leads 3-4x faster.
     
@@ -256,6 +260,9 @@ async def process_leads(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     - Single-pass regex
     - No rate limiting
     """
+
+    leads , total = get_all_leads(batch_id=batch_id,db=db)
+
     stats = {
         "total": 0,
         "cost_reduction_clients": 0,
@@ -283,7 +290,7 @@ async def process_leads(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     ) as session:
         
         # No semaphore delay - maximum speed
-        tasks = [classify_lead_async(session, profile) for profile in data]
+        tasks = [classify_lead_async(session, profile) for profile in leads]
         processed = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Filter out errors
@@ -309,7 +316,8 @@ async def process_leads(data: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     return {
         "processed_leads": processed,
-        "stats": stats
+        "stats": stats,
+        "total": total
     }
 
 # -----------------------------

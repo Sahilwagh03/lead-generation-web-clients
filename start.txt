@@ -1,0 +1,3 @@
+uvicorn app.main:app --reload
+cd .\client\lead-gen\
+npm run dev

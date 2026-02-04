@@ -24,12 +24,12 @@ export function SectionHeader({
     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+        <h1 className="text-2xl font-semibold">
           {title}
         </h1>
 
         {description && (
-          <p className={cn("text-md text-gray-600", maxWidth)}>{description}</p>
+          <p className={cn("text-sm text-muted-foreground", maxWidth)}>{description}</p>
         )}
       </div>
 

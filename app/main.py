@@ -1,43 +1,51 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware  # Add this import
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+
 from app.api.v1.routes import leads
-from app.db.database import init_db
+from app.db.database import get_db
 
 app = FastAPI(
-    title="lead Generation FastAPI Backend",
-    description="FastAPI backend",
-    version="1.0.0"
+    title="Lead Generation FastAPI Backend",
+    description="FastAPI backend for lead generation",
+    version="1.0.0",
 )
 
-# Add CORS middleware configuration
-# Configure CORS
+# CORS configuration
 origins = [
-    "http://localhost:3000",  # React frontend
-    "http://127.0.0.1:3000",  # Alternative localhost
-    "https://lead-generation-web-clients.vercel.app"
-    # Add other origins as needed for production:
-    # "https://yourfrontenddomain.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://lead-generation-web-clients.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # List of allowed origins
-    allow_credentials=True,  # Allow cookies/auth headers
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],  # Allow all headers
-    expose_headers=["*"],  # Expose all headers to the browser
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
+# Root endpoint
 @app.get("/")
 def root():
     return {"message": "FastAPI is running 🚀"}
 
+# Basic health check
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
-@app.on_event("startup")
-def startup():
-    init_db()
+# Database health check (real Postgres ping)
+@app.get("/health/db")
+def db_health(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
+    return {"status": "database connected"}
 
-app.include_router(leads.router, prefix="/api/v1/leads", tags=["Leads"])
+# API routes
+app.include_router(
+    leads.router,
+    prefix="/api/v1/leads",
+    tags=["Leads"],
+)

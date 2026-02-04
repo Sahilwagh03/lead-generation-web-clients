@@ -9,16 +9,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Lead, PaginationMeta } from "@/types/leads";
-import { cn } from "@/lib/utils";
-import { Button } from "../ui/button";
 import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import { Lead, LeadStatus, PaginationMeta } from "@/types/leads";
+import { cn } from "@/lib/utils";
 import TablePagination from "./TablePagination";
+import { getTagStyles, formatTagLabel } from "@/lib/lead-tags";
+import { formatCount } from "@/lib/number-format";
+import StatusSelect from "./StatusSelect";
+import useUpdateLeadStatus from "@/hooks/useUpdateLeadStatus";
 
 type Props = {
   data: Lead[];
@@ -30,6 +33,7 @@ type Props = {
 const WIDE_COLUMNS = ["bio", "pitch_angle"];
 
 const FIELD_LABELS: Record<keyof Lead, string> = {
+  id: "ID",
   username: "Username",
   full_name: "Full Name",
   profile_url: "Profile",
@@ -51,22 +55,30 @@ const FIELD_LABELS: Record<keyof Lead, string> = {
   website_phones: "Website Phones",
   tags: "Tags",
   pitch_angle: "Pitch Angle",
+  batch_id: "Batch ID",
+  status: "Status",
 };
 
 export default function LeadTable({ data, pagination, onPageChange }: Props) {
+
+  const { mutate: updateStatus } = useUpdateLeadStatus();
+  
   if (!data?.length) return null;
 
   const visibleColumns = Object.keys(FIELD_LABELS).filter((key) =>
     data.some((row) => row[key as keyof Lead] !== undefined),
   ) as (keyof Lead)[];
 
+  const handleStatusChange = (leadId: number, status: LeadStatus) => {
+    updateStatus({ id: leadId, status });
+  };
   return (
     <div className="rounded-lg overflow-hidden border bg-background">
-      {/* TABLE */}
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-12 text-center">#</TableHead>
+
             {visibleColumns.map((key) => (
               <TableHead key={key}>{FIELD_LABELS[key]}</TableHead>
             ))}
@@ -84,11 +96,17 @@ export default function LeadTable({ data, pagination, onPageChange }: Props) {
                 <TableCell
                   key={key}
                   className={cn(
-                    "align-top",
                     WIDE_COLUMNS.includes(key) && "max-w-65 truncate",
                   )}
                 >
-                  {renderCell(row[key])}
+                  {key === "status" ? (
+                    <StatusSelect
+                      value={row.status as LeadStatus}
+                      onChange={(s) => handleStatusChange(row.id, s)}
+                    />
+                  ) : (
+                    renderCell(row[key])
+                  )}
                 </TableCell>
               ))}
             </TableRow>
@@ -102,16 +120,47 @@ export default function LeadTable({ data, pagination, onPageChange }: Props) {
 }
 
 function renderCell(value: any) {
-  if (value === null || value === "") return "—";
+  if (
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  ) {
+    return "—";
+  }
+
+  if (typeof value === "number") {
+    return formatCount(value);
+  }
 
   if (Array.isArray(value)) {
+    const preview = value.slice(0, 3);
+    const remaining = value.length - preview.length;
+
     return (
-      <div className="flex flex-wrap gap-1">
-        {value.map((item, i) => (
-          <Badge key={i} variant="secondary">
-            {item}
+      <div className="flex items-center gap-1 max-w-60 overflow-hidden flex-wrap">
+        {preview.map((item, i) => (
+          <Badge key={i} className={getTagStyles(item)}>
+            {formatTagLabel(item)}
           </Badge>
         ))}
+
+        {remaining > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="text-xs text-muted-foreground underline cursor-pointer">
+                +{remaining}
+              </button>
+            </PopoverTrigger>
+
+            <PopoverContent className="max-w-xs p-2 flex flex-wrap gap-2">
+              {value.map((item, i) => (
+                <Badge key={i} className={getTagStyles(item)}>
+                  {formatTagLabel(item)}
+                </Badge>
+              ))}
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     );
   }
@@ -124,10 +173,15 @@ function renderCell(value: any) {
     );
   }
 
-  if (typeof value === "string" && value.startsWith("http")) {
+  if (
+    typeof value === "string" &&
+    (value.startsWith("http") ||
+      value.startsWith("www") ||
+      value.includes(".com"))
+  ) {
     return (
       <a
-        href={value}
+        href={value.startsWith("http") ? value : `https://${value}`}
         target="_blank"
         rel="noopener noreferrer"
         className="text-blue-600 underline"

@@ -2,20 +2,20 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getLeads } from "@/services/lead-generation";
-import { GetLeadsResponse } from "@/types/leads";
+import { GetLeadsParams, GetLeadsResponse } from "@/types/leads";
 
-interface UseLeadsParams {
-  page?: number;
-  pageSize?: number;
+interface UseLeadsParams extends GetLeadsParams {
+  enabled?: boolean;
 }
 
 export const useLeads = ({
-  page = 1,
-  pageSize = 20,
+  enabled = true,
+  ...params
 }: UseLeadsParams = {}) => {
   return useQuery<GetLeadsResponse>({
-    queryKey: ["leads", page, pageSize],
-    queryFn: () => getLeads(page, pageSize),
-    placeholderData: (previousData) => previousData,
+    queryKey: ["leads", params],
+    queryFn: () => getLeads(params),
+    enabled,
+    placeholderData: (prev) => prev,
   });
 };

@@ -1,50 +1,54 @@
-import logging
-from fastapi import APIRouter, Query, HTTPException
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from datetime import date
+from typing import Optional
+from unittest.mock import patch
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.constants.batch_status import BatchStatus
+from app.controllers.leads import DateFilter, get_all_leads
+from app.crud.leads import bulk_update_leads, update_lead_status
+from app.db.database import get_db
+from app.schemas.lead import LeadStatusResponse, UpdateLeadStatusRequest
+from app.schemas.scraping_batch import (
+    ScrapingBatchCreate,
+    ScrapingBatchResponse,
+)
+from app.crud.scraping_batch import create_scraping_batch, get_batches, update_batch_status
 from app.services.lead_queue import enqueue_scrape_job
 from app.utils.processing.lead_processing import process_leads
-from app.controllers.leads import get_all_leads , DateFilter
-from datetime import date
-from app.services.scrape import run_scrape_job
-logger = logging.getLogger(__name__)
-
 
 router = APIRouter()
-class HashtagRequest(BaseModel):
-    hashtag: str
-    max_profiles: int = 10
-class LeadsRequest(BaseModel):
-    leads: List[Dict[str, Any]]
 
-@router.post("/generate-leads")
-def generate_leads(request: HashtagRequest):
-    if not request.hashtag:
+@router.post(
+    "/create-scraping-batch",
+    response_model=ScrapingBatchResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_scraping_batch_api(
+    payload: ScrapingBatchCreate,
+    db: Session = Depends(get_db),
+):
+    try:
+        batch = create_scraping_batch(db, payload)
+        enqueue_scrape_job(batch.hashtag, batch.lead_count, batch.id)
+        return batch
+    except Exception as e:
         raise HTTPException(
-            status_code=400,
-            detail="Hashtags list cannot be empty"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create scraping batch",
         )
 
-    print("Queued scrape job")
-    enqueue_scrape_job(request.hashtag, request.max_profiles)
     
-    return {
-        "status": "accepted",
-        "message": "Lead generation job queued",
-        "hashtag": request.hashtag,
-    }
-
 @router.post("/process-leads")
-async def api_process_leads(request: LeadsRequest):
+async def api_process_leads(batch_id: int, db: Session = Depends(get_db)):
     try:
-        # Empty check
-        if not request.leads:
+        if not batch_id:
             raise HTTPException(
                 status_code=400,
-                detail="Leads list cannot be empty"
+                detail="Batch ID cannot be empty"
             )
 
-        result = await process_leads(request.leads)
+        result = await process_leads(db,batch_id)
 
         if result is None:
             raise HTTPException(
@@ -52,10 +56,13 @@ async def api_process_leads(request: LeadsRequest):
                 detail="Failed to process leads"
             )
 
+        bulk_update_leads(db, result["processed_leads"])
+        update_batch_status(db, batch_id, BatchStatus.PROCESSED.value, total_leads=result["total"])
+
         return {
             "status": "success",
-            "processed_count": len(result),
-            "leads": result
+            "processed_count": len(result["processed_leads"]),
+            "stats": result["stats"],
         }
 
     except HTTPException:
@@ -63,14 +70,13 @@ async def api_process_leads(request: LeadsRequest):
         raise
 
     except ValueError as e:
-        logger.error(f"Value error while processing leads: {e}")
         raise HTTPException(
             status_code=422,
             detail=str(e)
         )
 
     except Exception as e:
-        logger.exception("Unexpected error while processing leads")
+        print(f"Error processing leads: {e}")
         raise HTTPException(
             status_code=500,
             detail="Internal server error"
@@ -81,12 +87,14 @@ async def api_process_leads(request: LeadsRequest):
 def fetch_leads(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Records per page"),
+    batch_id: Optional[int] = Query(None, description="Filter by batch id"),
     is_verified: Optional[bool] = Query(None, description="Filter by verification status"),
     is_business: Optional[bool] = Query(None, description="Filter by business type"),
     date_filter: Optional[DateFilter] = Query(None, description="Preset date filter"),
     start_date: Optional[date] = Query(None, description="Custom start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Custom end date (YYYY-MM-DD)"),
     search: Optional[str] = Query(None, min_length=1, max_length=100, description="Search term"),
+    db: Session = Depends(get_db)
 ):
     """
     Fetch leads with filters + pagination
@@ -100,18 +108,20 @@ def fetch_leads(
         offset = (page - 1) * page_size
 
         leads, total = get_all_leads(
+            db=db,
             limit=page_size,
             offset=offset,
+            batch_id=batch_id,
             is_verified=is_verified,
             is_business=is_business,
             date_filter=date_filter.value if date_filter else None,
             start_date=start_date,
             end_date=end_date,
             search=search,
-            return_total=True  # 👈 important
+            return_total=True
         )
 
-        total_pages = (total + page_size - 1) // page_size
+        total_pages = (total + page_size - 1) // page_size if total is not None else 0
 
         return {
             "leads": leads,
@@ -138,3 +148,34 @@ def fetch_leads(
     except Exception as e:
         print(f"Error fetching leads: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+    
+@router.get("/get-batches")
+def fetch_batches(db: Session = Depends(get_db)):
+    """
+    Fetch all scraping batches from the database.
+    """
+    try:
+        batches = get_batches(db)
+        return {
+            "status": "success",
+            "batches": list(reversed(batches))  # Return in descending order
+        }
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch batches"
+        )
+    
+
+@router.patch("/{lead_id}/status", response_model=LeadStatusResponse)
+def update_status(
+    lead_id: int,
+    payload: UpdateLeadStatusRequest,
+    db: Session = Depends(get_db),
+):
+    return update_lead_status(
+        db=db,
+        lead_id=lead_id,
+        status=payload.status
+    )

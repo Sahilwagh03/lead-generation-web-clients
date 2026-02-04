@@ -24,7 +24,7 @@ const data = {
   },
   teams: [
     {
-      name: "Trackify",
+      name: "LeadGen",
       logo: GalleryVerticalEnd,
       plan: "Enterprise",
     }

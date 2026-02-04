@@ -18,7 +18,7 @@ import { SectionHeader } from "@/components/dashboard/section-header";
 
 const LeadGeneration = () => {
   const [hashtag, setHashtag] = useState("");
-  const [maxProfiles, setMaxProfiles] = useState("50");
+  const [leadCount, setLeadCount] = useState("50");
 
   const { generate, loading } = useGenerateLeads();
 
@@ -27,7 +27,7 @@ const LeadGeneration = () => {
 
     generate({
       hashtag: hashtag,
-      max_profiles: Number(maxProfiles) || 10,
+      lead_count: Number(leadCount) || 10,
     });
   };
 
@@ -67,14 +67,14 @@ const LeadGeneration = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="maxProfiles">Max Profiles</Label>
+            <Label htmlFor="leadCount">Max Profiles</Label>
             <Input
-              id="maxProfiles"
+              id="leadCount"
               type="number"
               min={1}
               max={1000}
-              value={maxProfiles}
-              onChange={(e) => setMaxProfiles(e.target.value)}
+              value={leadCount}
+              onChange={(e) => setLeadCount(e.target.value)}
             />
             <p className="text-sm text-muted-foreground">
               Recommended: 50–200 for best performance.

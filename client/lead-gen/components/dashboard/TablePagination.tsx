@@ -19,11 +19,15 @@ export default function TablePagination({ pagination, onPageChange }: Props) {
 
   return (
     <div className="flex items-center justify-between px-2 py-1 border-t">
-      <p className="text-sm text-muted-foreground">
-        Page {pagination.page} of {pagination.total_pages} · {pagination.total}{" "}
-        leads
-      </p>
+      <p className="text-sm text-muted-foreground flex items-center gap-2">
+        <span>
+          Page {pagination.page} of {pagination.total_pages}
+        </span>
 
+        <span className="text-border">|</span>
+
+        <span>{pagination.total} leads</span>
+      </p>
       <div className="flex items-center gap-2">
         <Button
           variant="outline"

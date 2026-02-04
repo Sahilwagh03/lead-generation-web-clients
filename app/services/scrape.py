@@ -20,6 +20,9 @@ import os
 from dotenv import load_dotenv
 import ollama
 from bs4 import BeautifulSoup
+from app.constants.batch_status import BatchStatus
+from app.crud.scraping_batch import update_batch_status
+from app.db.database import SessionLocal
 from app.utils.cerebras_ai import init_cerebras , process_with_cerebras
 from app.db.leads_repo import save_leads
 from typing import List
@@ -823,18 +826,24 @@ def scrape(hashtag: str, max_profiles: int =10):
         driver.quit()
 
 
-def run_scrape_job(hashtag: str, max_profiles: int):
-    print("🟢 Background scraping started")
+def run_scrape_job(hashtag: str, max_profiles: int, batch_id: int):
+    print(f"🟢 Background scraping started for batch {batch_id}")
 
     try:
         results = scrape(hashtag, max_profiles)
 
         if results:
             print(f"✅ Scraping completed. Total leads: {len(results)}")
-            save_leads(results)
-            print("💾 Leads saved successfully")
-        else:
-            print("⚠️ No leads found")
+            isSaved = save_leads(results, batch_id)
 
+            if isSaved:
+                with SessionLocal() as db:
+                    update_batch_status(db, batch_id, status=BatchStatus.COMPLETED.value, total_leads=len(results))
+                    return True
+                
     except Exception as e:
         print(f"❌ Background scrape failed: {e}")
+        # Update batch status to failed
+        with SessionLocal() as db:
+            update_batch_status(db, batch_id, status=BatchStatus.FAILED.value)
+        return False

@@ -1,38 +1,46 @@
-import sqlite3
-from pathlib import Path
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.pool import QueuePool
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-# app/db/
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "leads.db"
+POSTGRES_USER = os.getenv("POSTGRES_USER")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+POSTGRES_DB = os.getenv("POSTGRES_DB")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+DATABASE_URL = (
+    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
+    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+)
+
+# SQLAlchemy Base
+class Base(DeclarativeBase):
+    pass
 
 
-def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+engine = create_engine(
+    DATABASE_URL,
+    poolclass=QueuePool,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+    echo=False,  # set True for SQL logs
+)
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS leads (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        followers INTEGER,
-        following INTEGER,
-        posts INTEGER,
-        bio TEXT,
-        website TEXT,
-        email TEXT,
-        phone TEXT,
-        whatsapp TEXT,
-        is_verified INTEGER NOT NULL DEFAULT 0,
-        is_business INTEGER NOT NULL DEFAULT 0,
-        category TEXT,
-        full_name TEXT,
-        created_at TEXT NOT NULL
-    )
-    """)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
 
-    conn.commit()
-    conn.close()
+
+# Dependency for FastAPI
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
