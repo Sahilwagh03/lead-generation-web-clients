@@ -1,35 +1,37 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.pool import QueuePool
-import os
-from dotenv import load_dotenv
-load_dotenv()
 
-POSTGRES_USER = os.getenv("POSTGRES_USER")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-POSTGRES_DB = os.getenv("POSTGRES_DB")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+from app.core.config import DATABASE_URL, ENV
 
-DATABASE_URL = (
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
-    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-)
 
+# =========================
 # SQLAlchemy Base
+# =========================
 class Base(DeclarativeBase):
     pass
 
 
+# =========================
+# Engine
+# =========================
 engine = create_engine(
     DATABASE_URL,
+
+    # pooling
     poolclass=QueuePool,
     pool_size=10,
     max_overflow=20,
-    pool_pre_ping=True,
-    echo=False,  # set True for SQL logs
+
+    # production safety
+    pool_pre_ping=True,      # reconnect dead connections
+    pool_recycle=1800,      # avoid stale connections
 )
 
+
+# =========================
+# Session
+# =========================
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
@@ -37,7 +39,9 @@ SessionLocal = sessionmaker(
 )
 
 
-# Dependency for FastAPI
+# =========================
+# Dependency
+# =========================
 def get_db():
     db = SessionLocal()
     try:

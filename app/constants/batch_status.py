@@ -13,6 +13,7 @@ class LeadStatus(str, Enum):
     REMINDER = "REMINDER"       # follow-up pending
     RETARGET = "RETARGET"       # try again later
     INTERESTED = "INTERESTED"   # positive response
+    MEETING = "MEETING"
     NEGOTIATION = "NEGOTIATION" # discussing price/details
     ACCEPTED = "ACCEPTED"       # deal closed / converted
     REJECTED = "REJECTED"       # clearly not interested

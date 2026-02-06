@@ -1,3 +1,110 @@
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 cd .\client\lead-gen\
 npm run dev
+
+
+                  List of relations
+ Schema |          Name           |   Type   | Owner 
+--------+-------------------------+----------+-------
+ public | leads                   | table    | admin
+ public | leads_id_seq            | sequence | admin
+ public | scraping_batches        | table    | admin
+ public | scraping_batches_id_seq | sequence | admin
+
+                                         List of relations
+ Schema |       Name       | Type  | Owner | Persistence | Access method |    Size    | Description    
+--------+------------------+-------+-------+-------------+---------------+------------+-------------   
+ public | leads            | table | admin | permanent   | heap          | 112 kB     |
+ public | scraping_batches | table | admin | permanent   | heap          | 8192 bytes |
+
+
+                                                   List of relations
+ Schema |         Name          | Type  | Owner |      Table       | Persistence | Access method | Size  | Description 
+--------+-----------------------+-------+-------+------------------+-------------+---------------+-------+-------------
+ public | idx_leads_batch_id    | index | admin | leads            | permanent   | btree         | 16 kB |
+ public | idx_leads_original_id | index | admin | leads            | permanent   | btree         | 16 kB |
+ public | idx_leads_status      | index | admin | leads            | permanent   | btree         | 16 kB |
+ public | leads_pkey            | index | admin | leads            | permanent   | btree         | 16 kB |
+ public | scraping_batches_pkey | index | admin | scraping_batches | permanent   | btree         | 16 kB |
+
+
+ Schema |       Name       |  Internal name   | Size |  Elements   | Owner | Access privileges | Description
+--------+------------------+------------------+------+-------------+-------+-------------------+-------------
+ public | lead_status_enum | lead_status_enum | 4    | NEW        +| admin |                   |       
+        |                  |                  |      | CONTACTED  +|       |                   |       
+        |                  |                  |      | REMINDER   +|       |                   |       
+        |                  |                  |      | RETARGET   +|       |                   |       
+        |                  |                  |      | INTERESTED +|       |                   |       
+        |                  |                  |      | NEGOTIATION+|       |                   |       
+        |                  |                  |      | ACCEPTED   +|       |                   |       
+        |                  |                  |      | REJECTED   +|       |                   |       
+        |                  |                  |      | INVALID    +|       |                   |       
+        |                  |                  |      | BLOCKED     |       |                   |      
+
+
+                                                                     Table "public.leads"
+      Column       |           Type           | Collation | Nullable |              Default              | Storage  | Compression | Stats target | Description
+-------------------+--------------------------+-----------+----------+-----------------------------------+----------+-------------+--------------+-------------
+ id                | integer                  |           | not null | nextval('leads_id_seq'::regclass) | plain    |             |              |
+ batch_id          | integer                  |           | not null |                                   | plain    |             |              |
+ original_id       | bigint                   |           |          |                                   | plain    |             |              |
+ followers         | integer                  |           |          | 0                                 | plain    |             |              |
+ following         | integer                  |           |          | 0                                 | plain    |             |              |
+ posts             | integer                  |           |          | 0                                 | plain    |             |              |
+ bio               | text                     |           |          |                                   | extended |             |              |
+ website           | text                     |           |          |                                   | extended |             |              |
+ email             | character varying(255)   |           |          |                                   | extended |             |              |
+ phone             | character varying(50)    |           |          |                                   | extended |             |              |
+ whatsapp          | character varying(50)    |           |          |                                   | extended |             |              |
+ is_verified       | boolean                  |           |          | false                             | plain    |             |              |
+ is_business       | boolean                  |           |          | false                             | plain    |             |              |
+ category          | character varying(100)   |           |          |                                   | extended |             |              |
+ full_name         | text                     |           |          |                                   | extended |             |              |
+ lead_type         | character varying(50)    |           |          |                                   | extended |             |              |
+ platform_detected | character varying(50)    |           |          |                                 
+  | extended |             |              |
+ website_phones    | jsonb                    |           |          | '[]'::jsonb                     
+  | extended |             |              |
+ tags              | jsonb                    |           |          | '[]'::jsonb                     
+  | extended |             |              |
+ pitch_angle       | text                     |           |          |                                 
+  | extended |             |              |
+ status            | lead_status_enum         |           |          | 'NEW'::lead_status_enum         
+  | plain    |             |              |
+ created_at        | timestamp with time zone |           |          | CURRENT_TIMESTAMP               
+  | plain    |             |              |
+ processed_at      | timestamp with time zone |           |          |                                 
+  | plain    |             |              |
+ profile_url       | text                     |           |          | ''::text                        
+  | extended |             |              |
+ username          | text                     |           |          | ''::text                        
+  | extended |             |              |
+Indexes:
+    "leads_pkey" PRIMARY KEY, btree (id)
+    "idx_leads_batch_id" btree (batch_id)
+    "idx_leads_original_id" btree (original_id)
+    "idx_leads_status" btree (status)
+Foreign-key constraints:
+    "fk_leads_batch" FOREIGN KEY (batch_id) REFERENCES scraping_batches(id) ON DELETE CASCADE
+Access method: heap
+
+
+
+                                                                  Table "public.scraping_batches"      
+   Column   |           Type           | Collation | Nullable |                   Default              
+      | Storage  | Compression | Stats target | Description
+------------+--------------------------+-----------+----------+----------------------------------------------+----------+-------------+--------------+-------------
+ id         | integer                  |           | not null | nextval('scraping_batches_id_seq'::regclass) | plain    |             |              |
+ hashtag    | character varying(100)   |           | not null |                                        
+      | extended |             |              |
+ lead_count | integer                  |           |          | 0                                      
+      | plain    |             |              |
+ status     | character varying(20)    |           | not null | 'PENDING'::character varying           
+      | extended |             |              |
+ created_at | timestamp with time zone |           |          | CURRENT_TIMESTAMP                      
+      | plain    |             |              |
+Indexes:
+    "scraping_batches_pkey" PRIMARY KEY, btree (id)
+Referenced by:
+    TABLE "leads" CONSTRAINT "fk_leads_batch" FOREIGN KEY (batch_id) REFERENCES scraping_batches(id) ON DELETE CASCADE
+Access method: heap

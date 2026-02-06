@@ -5,7 +5,7 @@ export const generateLeads = async (
   payload: GenerateLeadsRequest,
 ): Promise<GenerateLeadsResponse> => {
   const { data } = await api.post<GenerateLeadsResponse>(
-    "leads/create-scraping-batch",
+    "/api/v1/leads/create-scraping-batch",
     payload,
   );
 
@@ -32,7 +32,7 @@ export const getLeads = async (
   if (params.endDate) queryParams.end_date = params.endDate;
   if (params.dateFilter) queryParams.date_filter = params.dateFilter;
 
-  const { data } = await api.get<GetLeadsResponse>("leads/get-leads", {
+  const { data } = await api.get<GetLeadsResponse>("/api/v1/leads/get-leads", {
     params: queryParams,
   });
 
@@ -40,7 +40,7 @@ export const getLeads = async (
 };
 
 export const getBatches = async (): Promise<GetBatchesResponse> => {
-  const { data } = await api.get<GetBatchesResponse>("/leads/get-batches");
+  const { data } = await api.get<GetBatchesResponse>("/api/v1/leads/get-batches");
   return data;
 };
 
@@ -48,7 +48,7 @@ export const ProcessLeads = async (
   batchId: string,
 ): Promise<ProcessLeadsResponse> => {
   const { data } = await api.post(
-    "/leads/process-leads?batch_id=" + batchId,
+    "/api/v1/leads/process-leads?batch_id=" + batchId,
   );
 
   return data;
@@ -58,7 +58,7 @@ export const updateLeadStatus = async ({
   id,
   status,
 }: UpdateLeadStatusPayload): Promise<Lead> => {
-  const res = await api.patch(`/leads/${id}/status`, {
+  const res = await api.patch(`/api/v1/leads/${id}/status`, {
     status,
   });
 

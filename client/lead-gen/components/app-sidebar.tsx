@@ -11,10 +11,14 @@ import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { SidebarData } from "@/constant/dashboard"
+import Logo from "./logo"
+import { Button } from "./ui/button"
+import { LogoutButton } from "./logout-button"
 // This is sample data.
 const data = {
   user: {
@@ -25,7 +29,7 @@ const data = {
   teams: [
     {
       name: "LeadGen",
-      logo: GalleryVerticalEnd,
+      logo: Logo,
       plan: "Enterprise",
     }
   ]
@@ -43,6 +47,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={SidebarData} />
       </SidebarContent>
       <SidebarRail />
+      <SidebarFooter>
+        <LogoutButton/>
+      </SidebarFooter>
     </Sidebar>
   )
 }

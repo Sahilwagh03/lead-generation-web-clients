@@ -38,6 +38,11 @@ export const leadStatusMeta: Record<
     color: "bg-green-100 text-green-800 border-green-200",
   },
 
+  MEETING:{
+    label:"Meeting",
+    color: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  },
+
   NEGOTIATION: {
     label: "Negotiation",
     color: "bg-orange-100 text-orange-800 border-orange-200",

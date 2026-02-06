@@ -97,6 +97,7 @@ export type LeadStatus =
   | "REMINDER"
   | "RETARGET"
   | "INTERESTED"
+  | "MEETING"
   | "NEGOTIATION"
   | "ACCEPTED"
   | "REJECTED"

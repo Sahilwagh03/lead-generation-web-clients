@@ -5,7 +5,45 @@ $DB = "leads_db"
 $USER = "admin"
 
 $sql = @"
--- Table 1: Scraping batches
+-- =========================
+-- 1. ENUM TYPE
+-- =========================
+DO \$\$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'lead_status_enum') THEN
+        CREATE TYPE lead_status_enum AS ENUM (
+            'NEW',
+            'CONTACTED',
+            'REMINDER',
+            'RETARGET',
+            'INTERESTED',
+            'MEETING',
+            'NEGOTIATION',
+            'ACCEPTED',
+            'REJECTED',
+            'INVALID',
+            'BLOCKED'
+        );
+    END IF;
+END
+\$\$;
+
+
+-- =========================
+-- 2. USERS TABLE (AUTH)
+-- =========================
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(120) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- =========================
+-- 3. SCRAPING BATCHES
+-- =========================
 CREATE TABLE IF NOT EXISTS scraping_batches (
     id SERIAL PRIMARY KEY,
     hashtag VARCHAR(100) NOT NULL,
@@ -14,46 +52,63 @@ CREATE TABLE IF NOT EXISTS scraping_batches (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table 2: Leads
+
+-- =========================
+-- 4. LEADS
+-- =========================
 CREATE TABLE IF NOT EXISTS leads (
     id SERIAL PRIMARY KEY,
     batch_id INTEGER NOT NULL,
-    
+
     original_id BIGINT,
+
     followers INTEGER DEFAULT 0,
     following INTEGER DEFAULT 0,
     posts INTEGER DEFAULT 0,
+
     bio TEXT,
     website VARCHAR(500),
+
     email VARCHAR(255),
     phone VARCHAR(50),
     whatsapp VARCHAR(50),
+
     is_verified BOOLEAN DEFAULT FALSE,
     is_business BOOLEAN DEFAULT FALSE,
+
     category VARCHAR(100),
     full_name VARCHAR(255),
-    
+
     lead_type VARCHAR(50),
     platform_detected VARCHAR(50),
+
     website_phones JSONB DEFAULT '[]'::jsonb,
     tags JSONB DEFAULT '[]'::jsonb,
+
     pitch_angle TEXT,
-    
-    status VARCHAR(20) DEFAULT 'scraped',
+
+    status lead_status_enum DEFAULT 'NEW',
+
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     processed_at TIMESTAMPTZ,
-    
+
     CONSTRAINT fk_leads_batch
         FOREIGN KEY (batch_id)
         REFERENCES scraping_batches(id)
         ON DELETE CASCADE
 );
 
--- Indexes for faster queries
+
+-- =========================
+-- 5. INDEXES
+-- =========================
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
 CREATE INDEX IF NOT EXISTS idx_leads_batch_id ON leads(batch_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_original_id ON leads(original_id);
 "@
+
 
 # Execute SQL inside Docker container
 docker exec -i $CONTAINER psql `

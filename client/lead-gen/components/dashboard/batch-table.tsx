@@ -93,7 +93,7 @@ export default function BatchesTable() {
 
             return (
               <TableRow key={batch.id}>
-                <TableCell className="font-medium">#{batch.id}</TableCell>
+                <TableCell className="font-medium">{batch.id}</TableCell>
                 <TableCell>{formatDateTime(batch.created_at)}</TableCell>
                 <TableCell className="max-w-50 truncate">
                   #{batch.hashtag}

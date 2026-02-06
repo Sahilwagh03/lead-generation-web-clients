@@ -22,13 +22,10 @@ export const BATCH_BUTTON_CONFIG: Record<
 
 export const LEAD_STATUS_OPTIONS: LeadStatus[] = [
   "NEW",
-  "CONTACTED",
-  "REMINDER",
   "RETARGET",
   "INTERESTED",
-  "NEGOTIATION",
+  "MEETING",
   "ACCEPTED",
   "REJECTED",
   "INVALID",
-  "BLOCKED",
 ];

@@ -1,10 +1,13 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.api.v1.routes import leads
 from app.db.database import get_db
+from app.schemas.users import CreateUserRequest, TokenResponse , LoginRequest, UserOut
+from app.db.models.users import User
+from app.core.auth import create_access_token, hash_password, verify_password
 
 app = FastAPI(
     title="Lead Generation FastAPI Backend",
@@ -16,6 +19,7 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.0.109:3000",
     "https://lead-generation-web-clients.vercel.app",
 ]
 
@@ -42,6 +46,41 @@ def health_check():
 def db_health(db: Session = Depends(get_db)):
     db.execute(text("SELECT 1"))
     return {"status": "database connected"}
+
+@app.post("/login", response_model=TokenResponse)
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+
+    user = db.query(User).filter(User.email == data.email).first()
+
+    if not user or not verify_password(data.password, user.password):
+        raise HTTPException(401, "Invalid credentials")
+
+    token = create_access_token({"user_id": user.id})
+
+    return {
+        "access_token": token,
+        "name": user.name,
+        "email": user.email,
+    }
+
+@app.post("/create-user", response_model=UserOut)
+def create_user(data: CreateUserRequest, db: Session = Depends(get_db)):
+
+    existing = db.query(User).filter(User.email == data.email).first()
+    if existing:
+        raise HTTPException(400, "Email already exists")
+
+    user = User(
+        name=data.name,
+        email=data.email,
+        password=hash_password(data.password),
+    )
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user
 
 # API routes
 app.include_router(

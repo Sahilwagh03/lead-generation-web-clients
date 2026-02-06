@@ -22,6 +22,12 @@ import { getTagStyles, formatTagLabel } from "@/lib/lead-tags";
 import { formatCount } from "@/lib/number-format";
 import StatusSelect from "./StatusSelect";
 import useUpdateLeadStatus from "@/hooks/useUpdateLeadStatus";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 
 type Props = {
   data: Lead[];
@@ -60,9 +66,8 @@ const FIELD_LABELS: Record<keyof Lead, string> = {
 };
 
 export default function LeadTable({ data, pagination, onPageChange }: Props) {
-
   const { mutate: updateStatus } = useUpdateLeadStatus();
-  
+
   if (!data?.length) return null;
 
   const visibleColumns = Object.keys(FIELD_LABELS).filter((key) =>
@@ -72,6 +77,7 @@ export default function LeadTable({ data, pagination, onPageChange }: Props) {
   const handleStatusChange = (leadId: number, status: LeadStatus) => {
     updateStatus({ id: leadId, status });
   };
+
   return (
     <div className="rounded-lg overflow-hidden border bg-background">
       <Table>
@@ -137,7 +143,7 @@ function renderCell(value: any) {
     const remaining = value.length - preview.length;
 
     return (
-      <div className="flex items-center gap-1 max-w-60 overflow-hidden flex-wrap">
+      <div className="flex items-center gap-1 min-w-52 overflow-hidden flex-wrap">
         {preview.map((item, i) => (
           <Badge key={i} className={getTagStyles(item)}>
             {formatTagLabel(item)}
@@ -191,5 +197,22 @@ function renderCell(value: any) {
     );
   }
 
-  return value;
+  if (typeof value === "string" && value.length > 30) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="max-w-50 block truncate cursor-pointer text-ellipsis">
+              {value}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="p-2" side="bottom">
+            <p>{value}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return value
 }
