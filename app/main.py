@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.api.v1.routes import leads
+from app.api.v1.routes import internal, leads, notifications
 from app.db.database import get_db
 from app.schemas.users import CreateUserRequest, TokenResponse , LoginRequest, UserOut
 from app.db.models.users import User
@@ -89,3 +89,6 @@ app.include_router(
     prefix="/api/v1/leads",
     tags=["Leads"],
 )
+
+app.include_router(notifications.router)
+app.include_router(internal.router)
