@@ -2,12 +2,14 @@
 
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -19,37 +21,47 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 
+import { cn } from "@/lib/utils";
+
 export function NavMain({
-  items,Navtitle
+  items,
+  Navtitle,
 }: {
   items: {
     title: string;
     url: string;
-    icon?: LucideIcon
-    isActive?: boolean;
-    isOpen?: boolean;
+    icon?: LucideIcon;
     subitems?: {
       title: string;
       url: string;
-      icon?: LucideIcon
+      icon?: LucideIcon;
     }[];
-  }[],
-  Navtitle?:string
+  }[];
+  Navtitle?: string;
 }) {
+  const pathname = usePathname();
+
+  const isExactActive = (url: string) => pathname === url;
+  const isSubActive = (url: string) => pathname.startsWith(url + "/");
+
   return (
     <SidebarGroup>
-      {
-        Navtitle && <SidebarGroupLabel>{Navtitle}</SidebarGroupLabel>
-      }
+      {Navtitle && <SidebarGroupLabel>{Navtitle}</SidebarGroupLabel>}
+
       <SidebarMenu>
         {items.map((item) => {
-          // If there are no subitems, render a simple menu item with a tooltip
-          if (!item.subitems || item.subitems.length === 0) {
+          const active = isExactActive(item.url);
+
+          if (!item.subitems?.length) {
             return (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton tooltip={item.title} asChild>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
+                  className={cn(active && "bg-primary/10 text-primary font-medium")}
+                >
                   <Link href={item.url}>
-                    {item.icon && <item.icon className="mr-2 w-6 h-6" />} {/* Increased icon size */}
+                    {item.icon && <item.icon className="mr-2 w-5 h-5" />}
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -57,34 +69,47 @@ export function NavMain({
             );
           }
 
-          // If there are subitems, render the collapsible version with tooltip
+          const isOpen = item.subitems.some((s) => isSubActive(s.url));
+
           return (
             <Collapsible
               key={item.title}
               asChild
-              defaultOpen={item.isOpen} // Using isOpen property from JSON
+              defaultOpen={isOpen}
               className="group/collapsible"
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon className="mr-2 w-6 h-6" />} {/* Increased icon size */}
+                  <SidebarMenuButton>
+                    {item.icon && <item.icon className="mr-2 w-5 h-5" />}
                     <span>{item.title}</span>
-                    <ChevronRight className="ml-auto w-5 h-5 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    <ChevronRight className="ml-auto w-4 h-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
+
                 <CollapsibleContent>
                   <SidebarMenuSub>
-                    {item.subitems.map((subItem) => (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild>
-                          <Link href={subItem.url}>
-                            {subItem.icon && <subItem.icon className="mr-2 w-5 h-5" />} {/* Increased icon size */}
-                            <span>{subItem.title}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
+                    {item.subitems.map((subItem) => {
+                      const subActive = isExactActive(subItem.url);
+
+                      return (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton
+                            asChild
+                            className={cn(
+                              subActive && "bg-primary/10 text-primary font-medium"
+                            )}
+                          >
+                            <Link href={subItem.url}>
+                              {subItem.icon && (
+                                <subItem.icon className="mr-2 w-4 h-4" />
+                              )}
+                              <span>{subItem.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      );
+                    })}
                   </SidebarMenuSub>
                 </CollapsibleContent>
               </SidebarMenuItem>

@@ -10,6 +10,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+    id:int
     name: str
     email: EmailStr
 

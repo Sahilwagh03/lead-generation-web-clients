@@ -8,6 +8,7 @@ export interface LoginPayload {
 export interface LoginResponse {
   access_token: string;
   token_type: "bearer";
+  id:number,
   name: string;
   email: string;
 }

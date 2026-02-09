@@ -1,8 +1,19 @@
 import { BATCH_BUTTON_CONFIG } from "@/constant/dashboard";
 import { LeadStatus } from "@/types/leads";
+import {
+  Bell,
+  CheckCheck,
+  Info,
+  UserPlus,
+  Target,
+  BarChart3,
+} from "lucide-react";
 
 export function getProcessButtonConfig(status: string, isLoading: boolean) {
-  const config = BATCH_BUTTON_CONFIG[status] ?? { text: "Process", clickable: false };
+  const config = BATCH_BUTTON_CONFIG[status] ?? {
+    text: "Process",
+    clickable: false,
+  };
   return {
     text: isLoading ? "Processing..." : config.text,
     disabled: !config.clickable || isLoading,
@@ -38,8 +49,8 @@ export const leadStatusMeta: Record<
     color: "bg-green-100 text-green-800 border-green-200",
   },
 
-  MEETING:{
-    label:"Meeting",
+  MEETING: {
+    label: "Meeting",
     color: "bg-cyan-100 text-cyan-800 border-cyan-200",
   },
 
@@ -67,4 +78,23 @@ export const leadStatusMeta: Record<
     label: "Blocked",
     color: "bg-zinc-800 text-white border-zinc-900",
   },
+};
+
+/* -------------------------
+     Icon mapping
+  ------------------------- */
+export const getNotificationIcons = (type: string) => {
+  switch (type) {
+    case "LEAD":
+      return <Target className="h-4 w-4" />;
+
+    case "USER":
+      return <UserPlus className="h-4 w-4" />;
+
+    case "SUMMARY":
+      return <BarChart3 className="h-4 w-4" />;
+
+    default:
+      return <Info className="h-4 w-4" />;
+  }
 };

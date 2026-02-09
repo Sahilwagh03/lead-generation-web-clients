@@ -6,6 +6,7 @@ from app.db.models.notifications import Notification
 from app.db.models.users import User
 from app.db.models.lead import Lead
 from app.db.models.scraping_batch import ScrapingBatch
+from app.services.notification_service import send_summary_whatsapp
 
 
 def generate_all_users_summary(db: Session):
@@ -15,7 +16,7 @@ def generate_all_users_summary(db: Session):
         generate_user_summary(db, user.id)
 
 
-def generate_user_summary(db: Session, user_id: int):
+def generate_user_summary(db: Session, user):
     yesterday = datetime.utcnow() - timedelta(days=1)
 
     stats = (
@@ -25,6 +26,9 @@ def generate_user_summary(db: Session, user_id: int):
         .all()
     )
 
+    if not stats:
+        return
+
     status_map = {s: c for s, c in stats}
 
     scraped = (
@@ -33,17 +37,24 @@ def generate_user_summary(db: Session, user_id: int):
         .scalar() or 0
     )
 
+    summary_data = {
+        "retarget": status_map.get("RETARGET", 0),
+        "contacted": status_map.get("CONTACTED", 0),
+        "meetings": status_map.get("MEETING", 0),
+        "scraped": scraped,
+    }
+
     message = f"""
 Yesterday Summary:
 
-Retarget: {status_map.get('RETARGET', 0)}
-Contacted: {status_map.get('CONTACTED', 0)}
-Meetings: {status_map.get('MEETING', 0)}
-Scraped: {scraped}
+Retarget: {summary_data['retarget']}
+Contacted: {summary_data['contacted']}
+Meetings: {summary_data['meetings']}
+Scraped: {summary_data['scraped']}
 """
 
     notif = Notification(
-        user_id=user_id,
+        user_id=user.id,
         title="Daily Lead Summary",
         message=message.strip(),
         type="SUMMARY"
@@ -51,3 +62,7 @@ Scraped: {scraped}
 
     db.add(notif)
     db.commit()
+
+    # ⭐ WhatsApp send (legal)
+    send_summary_whatsapp(user, summary_data)
+

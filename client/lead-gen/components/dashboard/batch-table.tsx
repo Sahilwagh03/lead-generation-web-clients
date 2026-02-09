@@ -72,7 +72,7 @@ export default function BatchesTable() {
   }
 
   return (
-    <div className="rounded-xl border bg-background">
+    <div className="rounded-xl overflow-hidden border bg-background">
       <Table>
         <TableHeader>
           <TableRow>

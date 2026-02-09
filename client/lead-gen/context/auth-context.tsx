@@ -19,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { getCookie, setCookie, removeCookie } = useCookies();
+  const { getCookie, removeCookie } = useCookies();
 
   const [user, setUser] = useState<LoginResponse | null>(null);
 

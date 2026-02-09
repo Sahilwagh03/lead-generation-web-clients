@@ -21,7 +21,6 @@ origins = [
     "http://127.0.0.1:3000",
     "http://192.168.0.109:3000",
     "https://lead-gen-seven.vercel.app"
-    "https://lead-generation-web-clients.vercel.app",
 ]
 
 app.add_middleware(
@@ -57,9 +56,10 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(401, "Invalid credentials")
 
     token = create_access_token({"user_id": user.id})
-
+    
     return {
         "access_token": token,
+        "id":user.id,
         "name": user.name,
         "email": user.email,
     }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -10,75 +9,39 @@ import { Bell, CheckCheck, Info, UserPlus, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "@/components/dashboard/section-header";
 
-type Notification = {
-  id: string;
-  title: string;
-  description: string;
-  time: string;
-  read: boolean;
-  type: "lead" | "system" | "user";
-};
-
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    title: "New Lead Captured",
-    description: "5 new leads added to Batch #21",
-    time: "2 min ago",
-    read: false,
-    type: "lead",
-  },
-  {
-    id: "2",
-    title: "Batch Completed",
-    description: "Scraping batch #18 finished successfully",
-    time: "1 hour ago",
-    read: false,
-    type: "system",
-  },
-  {
-    id: "3",
-    title: "New Team Member",
-    description: "Rahul joined your workspace",
-    time: "Yesterday",
-    read: true,
-    type: "user",
-  },
-];
+import { useState } from "react";
+import { useNotifications } from "@/hooks/useNotifications";
+import { getNotificationIcons } from "@/lib/common";
+import { formatDateTime } from "@/lib/batch-status";
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(mockNotifications);
   const [tab, setTab] = useState("all");
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  /* ✅ real backend hook */
+  const {
+    notifications,
+    unreadCount,
+    markRead,
+    markAllRead,
+    loading,
+  } = useNotifications();
 
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-
+  /* -------------------------
+     Filtering
+  ------------------------- */
   const filtered = notifications.filter((n) => {
-    if (tab === "unread") return !n.read;
+    if (tab === "unread") return !n.is_read;
     if (tab === "system") return n.type === "system";
     return true;
   });
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "lead":
-        return <Target className="h-4 w-4" />;
-      case "user":
-        return <UserPlus className="h-4 w-4" />;
-      default:
-        return <Info className="h-4 w-4" />;
-    }
-  };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <SectionHeader
-            title="Notifications"
-          />
+          <SectionHeader title="Notifications" />
 
           {unreadCount > 0 && (
             <Badge variant="destructive">{unreadCount} new</Badge>
@@ -88,7 +51,7 @@ export default function NotificationsPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={markAllRead}
+          onClick={() => markAllRead()}
           className="gap-2"
         >
           <CheckCheck className="h-4 w-4" />
@@ -105,7 +68,7 @@ export default function NotificationsPage() {
         </TabsList>
       </Tabs>
 
-      {/* Notifications List */}
+      {/* List */}
       <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
@@ -113,7 +76,11 @@ export default function NotificationsPage() {
 
         <CardContent className="p-0">
           <ScrollArea className="h-125">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="py-10 text-center text-muted-foreground">
+                Loading...
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <Bell className="mb-3 h-10 w-10 opacity-40" />
                 No notifications
@@ -123,14 +90,15 @@ export default function NotificationsPage() {
                 {filtered.map((n) => (
                   <div
                     key={n.id}
+                    onClick={() => markRead(n.id)}
                     className={cn(
                       "flex items-start gap-4 p-4 transition hover:bg-muted/40 cursor-pointer",
-                      !n.read && "bg-muted/20",
+                      !n.is_read && "bg-muted/20",
                     )}
                   >
                     {/* Icon */}
                     <div className="mt-1 rounded-lg bg-muted p-2">
-                      {getIcon(n.type)}
+                      {getNotificationIcons(n.type)}
                     </div>
 
                     {/* Content */}
@@ -139,17 +107,16 @@ export default function NotificationsPage() {
                         <p className="text-sm font-medium">{n.title}</p>
 
                         <span className="text-xs text-muted-foreground">
-                          {n.time}
+                          {formatDateTime(n.created_at)}
                         </span>
                       </div>
 
                       <p className="text-sm text-muted-foreground">
-                        {n.description}
+                        {n.message}
                       </p>
                     </div>
 
-                    {/* unread dot */}
-                    {!n.read && (
+                    {!n.is_read && (
                       <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
                     )}
                   </div>
