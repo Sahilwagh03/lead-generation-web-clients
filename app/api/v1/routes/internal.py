@@ -12,7 +12,7 @@ CRON_SECRET = os.getenv("CRON_SECRET")
 
 @router.post("/generate-daily-summary")
 def generate_summary(
-    x_api_key: str = Header(...),
+    x_api_key: str = Header(...,alias="X-Api-Key"),
     db: Session = Depends(get_db)
 ):
     if x_api_key != CRON_SECRET:
