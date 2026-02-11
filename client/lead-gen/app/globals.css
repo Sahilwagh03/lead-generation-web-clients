@@ -123,3 +123,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+ 
+::view-transition-new(root) {
+  animation: theme-reveal 900ms ease-in-out;
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0px at var(--x) var(--y));
+  }
+  to {
+    clip-path: circle(150vmax at var(--x) var(--y));
+  }
+}

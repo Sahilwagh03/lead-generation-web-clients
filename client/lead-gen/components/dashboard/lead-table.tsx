@@ -28,6 +28,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import { Card, CardContent } from "../ui/card";
+import { Inbox } from "lucide-react";
+import { Button } from "../ui/button";
+import Link from "next/link";
+import { EmptyState } from "../empty-state";
 
 type Props = {
   data: Lead[];
@@ -68,8 +73,6 @@ const FIELD_LABELS: Record<keyof Lead, string> = {
 export default function LeadTable({ data, pagination, onPageChange }: Props) {
   const { mutate: updateStatus } = useUpdateLeadStatus();
 
-  if (!data?.length) return null;
-
   const visibleColumns = Object.keys(FIELD_LABELS).filter((key) =>
     data.some((row) => row[key as keyof Lead] !== undefined),
   ) as (keyof Lead)[];
@@ -77,6 +80,17 @@ export default function LeadTable({ data, pagination, onPageChange }: Props) {
   const handleStatusChange = (leadId: number, status: LeadStatus) => {
     updateStatus({ id: leadId, status });
   };
+
+  if (!data?.length) {
+    return (
+      <EmptyState
+        title="No Leads Found"
+        description="You don’t have any leads yet."
+        href="/dashboard/lead-generation"
+        buttonText="Add Lead"
+      />
+    );
+  }
 
   return (
     <div className="rounded-lg overflow-hidden border bg-background">
@@ -214,5 +228,5 @@ function renderCell(value: any) {
     );
   }
 
-  return value
+  return value;
 }

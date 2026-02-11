@@ -19,6 +19,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 import { cn } from "@/lib/utils";
@@ -40,7 +41,7 @@ export function NavMain({
   Navtitle?: string;
 }) {
   const pathname = usePathname();
-
+  const {isMobile , toggleSidebar}=useSidebar()
   const isExactActive = (url: string) => pathname === url;
   const isSubActive = (url: string) => pathname.startsWith(url + "/");
 
@@ -60,7 +61,7 @@ export function NavMain({
                   tooltip={item.title}
                   className={cn(active && "bg-primary/10 text-primary font-medium")}
                 >
-                  <Link href={item.url}>
+                  <Link href={item.url} onClick={()=> isMobile && toggleSidebar()}>
                     {item.icon && <item.icon className="mr-2 w-5 h-5" />}
                     <span>{item.title}</span>
                   </Link>

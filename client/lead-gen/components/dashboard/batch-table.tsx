@@ -23,6 +23,7 @@ import {
 } from "@/lib/batch-status";
 import { cn } from "@/lib/utils";
 import { getProcessButtonConfig } from "@/lib/common";
+import { EmptyState } from "../empty-state";
 
 export default function BatchesTable() {
   const { data, isLoading } = useBatches();
@@ -65,9 +66,12 @@ export default function BatchesTable() {
 
   if (!data?.batches?.length) {
     return (
-      <div className="h-[60vh] flex items-center justify-center text-muted-foreground border rounded-xl">
-        No batches found
-      </div>
+      <EmptyState
+        title="No Batches Found"
+        description="You don’t have any batches yet."
+        href="/dashboard/lead-generation"
+        buttonText="Add Batch"
+      />
     );
   }
 

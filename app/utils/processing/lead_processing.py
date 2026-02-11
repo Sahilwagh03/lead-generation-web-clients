@@ -93,54 +93,6 @@ PHONE_REGEX = re.compile(
 )
 
 
-def extract_phones_fast(text: str, region: str = "IN") -> list[str]:
-    """
-    Production-grade phone extraction.
-
-    ✅ No regex false positives
-    ✅ Removes scripts/styles (huge noise reduction)
-    ✅ Limits scan size
-    ✅ Stops early
-    ✅ Only valid numbers
-
-    Result: 1–3 real phones typically
-    Speed: 2–3x faster than old version
-    """
-    if not text:
-        return []
-
-    # 1️⃣ Limit huge HTML (massive speed boost)
-    text = text[:MAX_PHONE_SCAN_CHARS]
-
-    # 2️⃣ Remove scripts + styles (biggest junk source)
-    text = SCRIPT_STYLE_RE.sub("", text)
-
-    phones = set()
-
-    try:
-        matcher = phonenumbers.PhoneNumberMatcher(text, region)
-
-        for match in matcher:
-            number = phonenumbers.format_number(
-                match.number,
-                phonenumbers.PhoneNumberFormat.E164
-            )
-
-            digits = number.replace("+", "")
-
-            # 3️⃣ Filter unrealistic numbers
-            if 10 <= len(digits) <= 13:
-                phones.add(number)
-
-            # 4️⃣ Early stop (critical for performance)
-            if len(phones) >= MAX_PHONE_RESULTS:
-                break
-
-    except:
-        pass
-
-    return list(phones)
-
 # -----------------------------
 # Platform detection from URL (instant)
 # -----------------------------
@@ -369,28 +321,55 @@ def process_leads_sync(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Synchronous wrapper."""
     return asyncio.run(process_leads(data))
 
-def extract_phones_fast(text: str) -> list[str]:
+def extract_phones_fast(text: str, region: str = "IN") -> list[str]:
     """
-    Ultra-fast phone extraction using regex first,
-    fallback to phonenumbers for validation.
+    Fast + safe phone extraction.
+
+    ✔ No regex false positives
+    ✔ Removes scripts/styles
+    ✔ Size limited for speed
+    ✔ Only valid numbers
+    ✔ Prevents junk like +23
     """
-    # Regex-based extraction (fast)
-    matches = PHONE_REGEX.findall(text or "")
-    
-    # Optional: normalize with phonenumbers
-    phones = []
-    for raw in matches:
-        try:
-            for match in phonenumbers.PhoneNumberMatcher(raw, "IN"):
-                number = phonenumbers.format_number(
-                    match.number, phonenumbers.PhoneNumberFormat.E164
-                )
-                phones.append(number)
-        except:
-            continue
-    
-    # Remove duplicates
-    return list(set(phones))
+
+    if not text:
+        return []
+
+    # Limit huge HTML (major speed boost)
+    text = text[:MAX_PHONE_SCAN_CHARS]
+
+    # Remove script/style noise
+    text = SCRIPT_STYLE_RE.sub("", text)
+
+    phones = set()
+
+    try:
+        matcher = phonenumbers.PhoneNumberMatcher(
+            text,
+            region,
+            leniency=phonenumbers.Leniency.POSSIBLE  # faster than VALID
+        )
+
+        for match in matcher:
+            number = phonenumbers.format_number(
+                match.number,
+                phonenumbers.PhoneNumberFormat.E164
+            )
+
+            digits = number.replace("+", "")
+
+            # Strict realistic length filter
+            if 10 <= len(digits) <= 15 and not digits.startswith("0"):
+                phones.add(number)
+
+            # Early stop (huge performance win)
+            if len(phones) >= MAX_PHONE_RESULTS:
+                break
+
+    except Exception:
+        pass
+
+    return list(phones)
 
 # -----------------------------
 # Example usage

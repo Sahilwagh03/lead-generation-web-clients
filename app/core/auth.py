@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt , JWTError
 from passlib.context import CryptContext
 
 load_dotenv()
@@ -32,5 +32,8 @@ def create_access_token(data: dict):
 
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-def decode_token(token: str):
-    return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+def decode_access_token(token: str):
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except JWTError:
+        return None
