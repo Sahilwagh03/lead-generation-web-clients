@@ -70,12 +70,15 @@ export default function NotificationsPage() {
 
       {/* List */}
       <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-        </CardHeader>
+        {
+          !loading && filtered.length &&
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+        }
 
         <CardContent className="p-0">
-          <ScrollArea className="h-[520px]">
+          <ScrollArea className="h-100">
             {loading && <NotificationsSkeleton />}
 
             {!loading && filtered.length === 0 && (
