@@ -1,14 +1,16 @@
-# PowerShell script to create tables in Docker Postgres
+# =============================================
+# Docker Postgres Table Setup Script (FINAL)
+# =============================================
 
 $CONTAINER = "leads_postgres"
 $DB = "leads_db"
 $USER = "admin"
 
-$sql = @"
+$sql = @'
 -- =========================
 -- 1. ENUM TYPE
 -- =========================
-DO \$\$
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'lead_status_enum') THEN
         CREATE TYPE lead_status_enum AS ENUM (
@@ -26,11 +28,11 @@ BEGIN
         );
     END IF;
 END
-\$\$;
+$$;
 
 
 -- =========================
--- 2. USERS TABLE (AUTH)
+-- 2. USERS TABLE
 -- =========================
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -43,9 +45,11 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- =========================
 -- 3. SCRAPING BATCHES
+-- (added user reference)
 -- =========================
 CREATE TABLE IF NOT EXISTS scraping_batches (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     hashtag VARCHAR(100) NOT NULL,
     lead_count INTEGER DEFAULT 0,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -55,9 +59,13 @@ CREATE TABLE IF NOT EXISTS scraping_batches (
 
 -- =========================
 -- 4. LEADS
+-- (added user_id + profile_url + username)
 -- =========================
 CREATE TABLE IF NOT EXISTS leads (
     id SERIAL PRIMARY KEY,
+
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
     batch_id INTEGER NOT NULL,
 
     original_id BIGINT,
@@ -67,7 +75,7 @@ CREATE TABLE IF NOT EXISTS leads (
     posts INTEGER DEFAULT 0,
 
     bio TEXT,
-    website VARCHAR(500),
+    website TEXT,
 
     email VARCHAR(255),
     phone VARCHAR(50),
@@ -77,7 +85,7 @@ CREATE TABLE IF NOT EXISTS leads (
     is_business BOOLEAN DEFAULT FALSE,
 
     category VARCHAR(100),
-    full_name VARCHAR(255),
+    full_name TEXT,
 
     lead_type VARCHAR(50),
     platform_detected VARCHAR(50),
@@ -86,6 +94,10 @@ CREATE TABLE IF NOT EXISTS leads (
     tags JSONB DEFAULT '[]'::jsonb,
 
     pitch_angle TEXT,
+
+    -- NEW FIELDS (missing earlier)
+    profile_url TEXT DEFAULT '',
+    username TEXT DEFAULT '',
 
     status lead_status_enum DEFAULT 'NEW',
 
@@ -104,14 +116,18 @@ CREATE TABLE IF NOT EXISTS leads (
 -- =========================
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
+CREATE INDEX IF NOT EXISTS idx_batches_user_id ON scraping_batches(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_leads_user_id ON leads(user_id);
 CREATE INDEX IF NOT EXISTS idx_leads_batch_id ON leads(batch_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_original_id ON leads(original_id);
 
+
 -- =========================
--- 6. NOTIFICATION
+-- 6. NOTIFICATIONS
 -- =========================
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
@@ -121,12 +137,11 @@ CREATE TABLE notifications (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_notifications_user_read
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read
 ON notifications(user_id, is_read);
-"@
+'@
 
 
-# Execute SQL inside Docker container
 docker exec -i $CONTAINER psql `
     -U $USER `
     -d $DB `

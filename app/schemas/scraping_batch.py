@@ -7,6 +7,7 @@ class ScrapingBatchCreate(BaseModel):
 
 class ScrapingBatchResponse(BaseModel):
     id: int
+    user_id: int
     hashtag: str
     lead_count: int
     status: BatchStatus

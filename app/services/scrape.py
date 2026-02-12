@@ -826,7 +826,7 @@ def scrape(hashtag: str, max_profiles: int =10):
         driver.quit()
 
 
-def run_scrape_job(hashtag: str, max_profiles: int, batch_id: int):
+def run_scrape_job(hashtag: str, max_profiles: int, batch_id: int,user_id:int):
     print(f"🟢 Background scraping started for batch {batch_id}")
 
     try:
@@ -834,7 +834,7 @@ def run_scrape_job(hashtag: str, max_profiles: int, batch_id: int):
 
         if results:
             print(f"✅ Scraping completed. Total leads: {len(results)}")
-            isSaved = save_leads(results, batch_id)
+            isSaved = save_leads(results, batch_id,user_id)
 
             if isSaved:
                 with SessionLocal() as db:

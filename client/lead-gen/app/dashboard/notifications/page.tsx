@@ -71,7 +71,7 @@ export default function NotificationsPage() {
       {/* List */}
       <Card className="rounded-2xl">
         {
-          !loading && filtered.length &&
+          !loading && filtered.length > 0 &&
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>

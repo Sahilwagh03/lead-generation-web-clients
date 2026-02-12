@@ -9,7 +9,7 @@ class Lead(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     batch_id = Column(Integer, ForeignKey("scraping_batches.id"), nullable=False)
-
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     followers = Column(Integer, default=0)
     following = Column(Integer, default=0)
     posts = Column(Integer, default=0)

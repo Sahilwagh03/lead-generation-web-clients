@@ -6,8 +6,10 @@ import {
   GenerateLeadsRequest,
   GenerateLeadsResponse,
 } from "@/types/leads";
+import { useRouter } from "next/navigation";
 
 export const useGenerateLeads = () => {
+  const router = useRouter()
   const mutation = useMutation<
     GenerateLeadsResponse,
     AxiosError,
@@ -17,6 +19,9 @@ export const useGenerateLeads = () => {
 
     onSuccess: (data) => {
       toast.success("Leads generated");
+      setTimeout(()=>{
+        router.push("/dashboard");
+      },100)
     },
 
     onError: (error) => {

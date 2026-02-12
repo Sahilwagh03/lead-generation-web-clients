@@ -40,15 +40,18 @@ def bulk_update_leads(db: Session, enriched_leads: List[Dict[str, Any]]) -> None
         db.commit()
 
 
-def update_lead_status(
-    db: Session,
-    lead_id: int,
-    status: LeadStatus
-) -> Lead:
-    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+def update_lead_status(db, lead_id: int, status: str, user_id: int):
+    lead = (
+        db.query(Lead)
+        .filter(
+            Lead.id == lead_id,
+            Lead.user_id == user_id
+        )
+        .first()
+    )
 
     if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
+        raise HTTPException(404, "Lead not found")
 
     lead.status = status
     db.commit()

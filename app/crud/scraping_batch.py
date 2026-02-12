@@ -6,18 +6,23 @@ from app.constants.batch_status import BatchStatus
 
 def create_scraping_batch(
     db: Session,
-    batch_in: ScrapingBatchCreate,
+    hashtag: str,
+    lead_count: int,
+    user_id: int,
 ) -> ScrapingBatch:
+
     batch = ScrapingBatch(
-        hashtag=batch_in.hashtag,
-        lead_count=batch_in.lead_count,
+        user_id=user_id,
+        hashtag=hashtag,
+        lead_count=lead_count,
         status=BatchStatus.PENDING.value,
     )
+
     db.add(batch)
     db.commit()
     db.refresh(batch)
-    return batch
 
+    return batch
 
 def update_batch_status(
     db: Session, batch_id: int, status: str, total_leads: int = 0
@@ -44,6 +49,9 @@ def update_batch_status(
         db.rollback()
         print(f"❌ Failed to update batch {batch_id}: {e}")
 
-def get_batches(db:Session):
-    batches = db.query(ScrapingBatch).all()
-    return batches
+def get_batches(db: Session, user_id: int):
+    return (
+        db.query(ScrapingBatch)
+        .filter(ScrapingBatch.user_id == user_id)
+        .all()
+    )

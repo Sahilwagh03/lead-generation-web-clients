@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.api.v1.routes import internal, leads, notifications
+from app.core.deps import verify_token
 from app.db.database import get_db
 from app.schemas.users import CreateUserRequest, TokenResponse , LoginRequest, UserOut
 from app.db.models.users import User
@@ -88,6 +89,7 @@ app.include_router(
     leads.router,
     prefix="/api/v1/leads",
     tags=["Leads"],
+    dependencies=[Depends(verify_token)]
 )
 
 app.include_router(notifications.router)

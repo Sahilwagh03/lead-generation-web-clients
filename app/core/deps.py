@@ -9,10 +9,9 @@ from app.db.models.users import User
 security = HTTPBearer()
 
 
-def get_current_user(
+def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
-) -> User:
+):
     token = credentials.credentials
 
     payload = decode_access_token(token)
@@ -22,6 +21,14 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
+
+    return payload
+
+
+def get_current_user(
+    payload: dict = Depends(verify_token),
+    db: Session = Depends(get_db),
+) -> User:
 
     user = db.query(User).filter(User.id == payload["user_id"]).first()
 

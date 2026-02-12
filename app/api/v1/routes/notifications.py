@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
+from app.core.deps import verify_token
 from app.db.database import get_db
 from app.db.models.notifications import Notification
 from app.schemas.notifications import NotificationOut
 
-router = APIRouter(prefix="/notifications", tags=["Notifications"])
+router = APIRouter(prefix="/notifications", tags=["Notifications"],dependencies=[Depends(verify_token)])
 
 
 # -------------------------

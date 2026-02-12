@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.db.models.lead import Lead  # We'll create this model
 
-def save_leads(leads: list, batch_id: int):
+def save_leads(leads: list, batch_id: int,user_id:int):
     """
     Save a list of leads to the database with default values if some fields are missing.
     Associates all leads with the given batch_id.
@@ -30,6 +30,7 @@ def save_leads(leads: list, batch_id: int):
             full_name=lead.get("full_name", ""),
             profile_url=lead.get("profile_url", ""),
             username=lead.get("username", ""),
+            user_id=user_id,
             created_at=now,
         )
         lead_objects.append(lead_obj)

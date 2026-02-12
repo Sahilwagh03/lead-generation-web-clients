@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 
 from app.constants.batch_status import BatchStatus
 from app.controllers.leads import DateFilter, get_all_leads
+from app.core.deps import get_current_user
 from app.crud.leads import bulk_update_leads, update_lead_status
 from app.db.database import get_db
+from app.db.models.users import User
 from app.schemas.lead import LeadStatusResponse, UpdateLeadStatusRequest
 from app.schemas.scraping_batch import (
     ScrapingBatchCreate,
@@ -27,16 +29,22 @@ router = APIRouter()
 def create_scraping_batch_api(
     payload: ScrapingBatchCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    batch = create_scraping_batch(
+        db=db,
+        hashtag=payload.hashtag,
+        lead_count=payload.lead_count,
+        user_id=current_user.id,
+    )
+
+    # enqueue should NOT break API
     try:
-        batch = create_scraping_batch(db, payload)
-        enqueue_scrape_job(batch.hashtag, batch.lead_count, batch.id)
-        return batch
+        enqueue_scrape_job(batch.hashtag, batch.lead_count, batch.id ,current_user.id)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create scraping batch",
-        )
+        print("Queue error:", e)
+
+    return batch
 
     
 @router.post("/process-leads")
@@ -94,7 +102,7 @@ def fetch_leads(
     start_date: Optional[date] = Query(None, description="Custom start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Custom end date (YYYY-MM-DD)"),
     search: Optional[str] = Query(None, min_length=1, max_length=100, description="Search term"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Fetch leads with filters + pagination
@@ -150,12 +158,12 @@ def fetch_leads(
         raise HTTPException(status_code=500, detail="Internal server error")
     
 @router.get("/get-batches")
-def fetch_batches(db: Session = Depends(get_db)):
+def fetch_batches(db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
     """
     Fetch all scraping batches from the database.
     """
     try:
-        batches = get_batches(db)
+        batches = get_batches(db, current_user.id)
         return {
             "status": "success",
             "batches": list(reversed(batches))  # Return in descending order
@@ -167,15 +175,16 @@ def fetch_batches(db: Session = Depends(get_db)):
             detail="Failed to fetch batches"
         )
     
-
 @router.patch("/{lead_id}/status", response_model=LeadStatusResponse)
 def update_status(
     lead_id: int,
     payload: UpdateLeadStatusRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return update_lead_status(
         db=db,
         lead_id=lead_id,
-        status=payload.status
+        status=payload.status,
+        user_id=current_user.id
     )

@@ -11,11 +11,11 @@ LEAD_QUEUE = queue.Queue()
 def queue_worker():
     print("🟢 Lead Queue Worker started")
     while True:
-        hashtag, max_profiles, batch_id = LEAD_QUEUE.get()
+        hashtag, max_profiles, batch_id , user_id = LEAD_QUEUE.get()
         try:
             with SessionLocal() as db:
                 update_batch_status(db,batch_id, status=BatchStatus.RUNNING.value)
-            isSuccess = run_scrape_job(hashtag, max_profiles, batch_id)
+            isSuccess = run_scrape_job(hashtag, max_profiles, batch_id , user_id)
             if isSuccess:
                 print(f"✅ Finished job: {hashtag} (batch_id={batch_id})")
         except Exception as e:
@@ -28,6 +28,6 @@ worker_thread = threading.Thread(target=queue_worker, daemon=True)
 worker_thread.start()
 
 # Function to enqueue a new job
-def enqueue_scrape_job(hashtag: str, max_profiles: int, batch_id: int):
-    LEAD_QUEUE.put((hashtag, max_profiles, batch_id))
+def enqueue_scrape_job(hashtag: str, max_profiles: int, batch_id: int,user_id:int):
+    LEAD_QUEUE.put((hashtag, max_profiles, batch_id,user_id))
     print(f"🟢 Job queued: {hashtag} (batch_id={batch_id})")
