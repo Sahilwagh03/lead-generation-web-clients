@@ -20,6 +20,7 @@ export const useLogin = () => {
 
       setUser(data);
 
+      toast.success("Logged in successfully")
       router.push("/dashboard");
     },
 

@@ -26,7 +26,8 @@ export const getLeads = async (
     queryParams.is_verified = params.isVerified;
   if (params.isBusiness !== undefined)
     queryParams.is_business = params.isBusiness;
-
+  if (params.status)
+    queryParams.status = params.status;
   if (params.search) queryParams.search = params.search;
   if (params.startDate) queryParams.start_date = params.startDate;
   if (params.endDate) queryParams.end_date = params.endDate;

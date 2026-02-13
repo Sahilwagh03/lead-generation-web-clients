@@ -31,9 +31,9 @@ export default function NotificationsPage() {
     loading,
   } = useNotifications();
 
-  const filtered = notifications.filter((n) => {
-    if (tab === "unread") return !n.is_read;
-    if (tab === "system") return n.type === "system";
+  const filtered = notifications.filter((notification) => {
+    if (tab === "unread") return !notification.is_read;
+    if (tab === "system") return notification.type === "system";
     return true;
   });
 
@@ -69,7 +69,7 @@ export default function NotificationsPage() {
       </Tabs>
 
       {/* List */}
-      <Card className="rounded-2xl">
+      <Card className="rounded-2xl gap-3">
         {
           !loading && filtered.length > 0 &&
           <CardHeader>
@@ -78,7 +78,6 @@ export default function NotificationsPage() {
         }
 
         <CardContent className="p-0">
-          <ScrollArea className="h-100">
             {loading && <NotificationsSkeleton />}
 
             {!loading && filtered.length === 0 && (
@@ -94,46 +93,45 @@ export default function NotificationsPage() {
 
             {!loading && filtered.length > 0 && (
               <div className="divide-y">
-                {filtered.map((n) => (
+                {filtered.map((notification) => (
                   <NotificationDetailsDialog
-                    key={n.id}
-                    notification={n}
+                    key={notification.id}
+                    notification={notification}
                   >
                     {/* Trigger row */}
                     <div
-                      onClick={() => markRead(n.id)}
+                      onClick={() => markRead(notification.id)}
                       className={cn(
                         "flex items-start gap-4 p-4 cursor-pointer transition hover:bg-muted/40",
-                        !n.is_read && "bg-muted/20"
+                        !notification.is_read && "bg-muted/20"
                       )}
                     >
                       <div className="mt-1 rounded-lg bg-muted p-2">
-                        {getNotificationIcons(n.type)}
+                        {getNotificationIcons(notification.type)}
                       </div>
 
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{n.title}</p>
+                          <p className="text-sm font-medium">{notification.title}</p>
 
                           <span className="text-xs text-muted-foreground">
-                            {formatDateTime(n.created_at)}
+                            {formatDateTime(notification.created_at)}
                           </span>
                         </div>
 
                         <p className="text-sm text-muted-foreground line-clamp-2">
-                          {n.message}
+                          {notification.message}
                         </p>
                       </div>
 
-                      {!n.is_read && (
+                      {!notification.is_read && (
                         <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
                       )}
                     </div>
-                  </NotificationDetailsDialog>
+                  </NotificationDetailsDialog> 
                 ))}
               </div>
             )}
-          </ScrollArea>
         </CardContent>
       </Card>
     </div>

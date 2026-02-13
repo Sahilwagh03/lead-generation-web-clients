@@ -27,7 +27,7 @@ export function EmptyState({
   cardClassName
 }: EmptyStateProps) {
   return (
-    <div className={cn("h-[60vh] flex items-center justify-center",className) }>
+    <div className={cn("h-auto flex items-center justify-center",className) }>
       <Card className={cn("w-full h-full justify-center rounded-2xl border-dashed shadow-sm",cardClassName)}>
         <CardContent className="flex flex-col h items-center justify-center text-center py-14 px-6 space-y-4">
 
@@ -46,7 +46,7 @@ export function EmptyState({
 
           {href && buttonText && (
             <Link href={href}>
-              <Button size="sm">{buttonText}</Button>
+              <Button size="sm" className="cursor-pointer">{buttonText}</Button>
             </Link>
           )}
         </CardContent>

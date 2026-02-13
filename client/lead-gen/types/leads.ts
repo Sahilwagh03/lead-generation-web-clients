@@ -72,6 +72,7 @@ export interface GetLeadsParams {
   pageSize?: number;
   isVerified?: boolean;
   isBusiness?: boolean;
+  status?:string;
   search?: string;
   startDate?: string;
   endDate?: string;

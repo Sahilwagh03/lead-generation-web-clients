@@ -6,6 +6,7 @@ class BatchStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     PROCESSED = "PROCESSED"
+    PROCESSING = "PROCESSING"
 
 class LeadStatus(str, Enum):
     NEW = "NEW"                 # freshly scraped/imported

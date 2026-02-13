@@ -4,7 +4,7 @@ from unittest.mock import patch
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.constants.batch_status import BatchStatus
+from app.constants.batch_status import BatchStatus, LeadStatus
 from app.controllers.leads import DateFilter, get_all_leads
 from app.core.deps import get_current_user
 from app.crud.leads import bulk_update_leads, update_lead_status
@@ -98,11 +98,13 @@ def fetch_leads(
     batch_id: Optional[int] = Query(None, description="Filter by batch id"),
     is_verified: Optional[bool] = Query(None, description="Filter by verification status"),
     is_business: Optional[bool] = Query(None, description="Filter by business type"),
+    status: Optional[LeadStatus] = Query(None, description="Filter by lead status"),
     date_filter: Optional[DateFilter] = Query(None, description="Preset date filter"),
     start_date: Optional[date] = Query(None, description="Custom start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Custom end date (YYYY-MM-DD)"),
     search: Optional[str] = Query(None, min_length=1, max_length=100, description="Search term"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Fetch leads with filters + pagination
@@ -117,11 +119,13 @@ def fetch_leads(
 
         leads, total = get_all_leads(
             db=db,
+            user_id=current_user.id,
             limit=page_size,
             offset=offset,
             batch_id=batch_id,
             is_verified=is_verified,
             is_business=is_business,
+            status=status,
             date_filter=date_filter.value if date_filter else None,
             start_date=start_date,
             end_date=end_date,
@@ -158,7 +162,7 @@ def fetch_leads(
         raise HTTPException(status_code=500, detail="Internal server error")
     
 @router.get("/get-batches")
-def fetch_batches(db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+def fetch_batches(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Fetch all scraping batches from the database.
     """

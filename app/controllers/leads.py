@@ -4,6 +4,7 @@ from enum import Enum
 from fastapi.params import Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, and_
+from app.constants.batch_status import LeadStatus
 from app.db.database import SessionLocal
 from app.db.models.lead import Lead
 
@@ -40,6 +41,7 @@ def get_date_range(filter_type: str) -> Optional[tuple[date, date]]:
 
 def get_all_leads(
     db: Session,
+    user_id: int,
     limit: int = 200,
     offset: int = 0,
     batch_id: Optional[int] = None,
@@ -49,12 +51,12 @@ def get_all_leads(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     search: Optional[str] = None,
+    status: Optional[LeadStatus] = None,
     return_total: bool = False,
 ) -> Tuple[List[Dict], Optional[int]]:
 
     try:
-        query = db.query(Lead)
-
+        query = db.query(Lead).filter(Lead.user_id == user_id)
         # ✅ Batch filter
         if batch_id is not None:
             query = query.filter(Lead.batch_id == batch_id)
@@ -64,6 +66,9 @@ def get_all_leads(
 
         if is_business is not None:
             query = query.filter(Lead.is_business == is_business)
+
+        if status is not None:
+            query = query.filter(Lead.status == status)
 
         if date_filter:
             dr = get_date_range(date_filter)

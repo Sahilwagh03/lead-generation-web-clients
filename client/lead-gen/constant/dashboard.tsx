@@ -29,3 +29,21 @@ export const LEAD_STATUS_OPTIONS: LeadStatus[] = [
   "REJECTED",
   "INVALID",
 ];
+
+export const NotificationDataViewTabs: {
+  value: LeadStatus;
+  label: string;
+}[] = [
+  {
+    value: "RETARGET",
+    label: "Retarget",
+  },
+  {
+    value: "INTERESTED", // ✅ replaced CONTACTED (not in enum)
+    label: "Interested",
+  },
+  {
+    value: "MEETING",
+    label: "Meeting",
+  },
+];

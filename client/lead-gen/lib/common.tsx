@@ -98,3 +98,20 @@ export const getNotificationIcons = (type: string) => {
       return <Info className="h-4 w-4" />;
   }
 };
+
+
+export const getYesterdayRange = () => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const start = new Date(yesterday);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(yesterday);
+  end.setHours(23, 59, 59, 999);
+
+  return {
+    startDate: start.toISOString().split("T")[0],
+    endDate: end.toISOString().split("T")[0],
+  };
+};

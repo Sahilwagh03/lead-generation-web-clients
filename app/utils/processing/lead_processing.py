@@ -17,6 +17,7 @@ from requests import Session
 
 from app.constants.batch_status import BatchStatus
 from app.controllers.leads import get_all_leads
+from app.crud.scraping_batch import update_batch_status
 # -----------------------------
 # AGGRESSIVE Performance Config
 # -----------------------------
@@ -254,9 +255,10 @@ async def process_leads(db:Session , batch_id: int) -> Dict[str, Any]:
     - Single-pass regex
     - No rate limiting
     """
+    update_batch_status(db, batch_id, BatchStatus.PROCESSING.value)
 
     leads , total = get_all_leads(batch_id=batch_id,db=db)
-
+    
     stats = {
         "total": 0,
         "cost_reduction_clients": 0,

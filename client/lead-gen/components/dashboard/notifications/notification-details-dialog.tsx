@@ -8,56 +8,36 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-
 import { formatDateTime } from "@/lib/batch-status";
+import DynamicTabs from "./dynamic-tabs";
+import { NotificationDataViewTabs } from "@/constant/dashboard";
 
 type Props = {
-  notification: any;
+  notification: {
+    title: string;
+    created_at: string;
+    message: string;
+  };
   children: React.ReactNode;
 };
 
-export function NotificationDetailsDialog({
-  notification,
-  children,
-}: Props) {
+export function NotificationDetailsDialog({ notification, children }: Props) {
   return (
     <Dialog>
-      {/* trigger passed as child */}
       <DialogTrigger asChild>{children}</DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg rounded-2xl p-6">
+      <DialogContent className="p-4 max-w-[95vw]! max-h-[95vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             {notification.title}
           </DialogTitle>
 
-          <DialogDescription>
-            {formatDateTime(notification.created_at)}
+          <DialogDescription className="flex flex-col gap-1">
+            <span>{formatDateTime(notification.created_at)}</span>
+            <span>{notification.message}</span>
           </DialogDescription>
         </DialogHeader>
-
-        {/* message */}
-        <p className="pt-3 text-sm text-muted-foreground">
-          {notification.message}
-        </p>
-
-        {/* stats grid */}
-        {notification.stats && (
-          <div className="grid grid-cols-2 gap-3 pt-5">
-            {Object.entries(notification.stats).map(([key, val]) => (
-              <Button
-                key={key}
-                variant="secondary"
-                className="justify-between h-11 capitalize font-medium"
-              >
-                {key}
-                <Badge variant="outline">{val as number}</Badge>
-              </Button>
-            ))}
-          </div>
-        )}
+        <DynamicTabs tabs={NotificationDataViewTabs} />
       </DialogContent>
     </Dialog>
   );
