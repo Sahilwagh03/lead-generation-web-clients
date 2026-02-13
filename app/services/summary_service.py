@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
-
+from datetime import datetime, timedelta , time
 from app.db.models.notifications import Notification
 from app.db.models.users import User
 from app.db.models.lead import Lead
@@ -19,32 +18,56 @@ def generate_all_users_summary(db: Session):
 
 
 def generate_user_summary(db: Session, user: User):
-    """Generate daily lead summary for a single user."""
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    """
+    Generates yesterday summary (00:00 → 23:59 UTC)
+    """
 
-    # Get lead stats for yesterday
+    # -------------------------------------------------
+    # FIXED DATE RANGE (full yesterday)
+    # -------------------------------------------------
+    today = datetime.utcnow().date()
+    yesterday = today - timedelta(days=1)
+
+    start = datetime.combine(yesterday, time.min)  # 00:00
+    end = datetime.combine(today, time.min)        # next day 00:00
+
+    print(f"\n📅 Summary window: {start} → {end}")
+
+    # -------------------------------------------------
+    # Lead status stats
+    # -------------------------------------------------
     stats = (
         db.query(Lead.status, func.count(Lead.id))
-        .filter(Lead.created_at >= yesterday)
+        .filter(Lead.created_at >= start)
+        .filter(Lead.created_at < end)
         .group_by(Lead.status)
         .all()
     )
 
-    if not stats:
-        return  # nothing to summarize
+    print("📊 Lead stats:", stats)
 
-    # Map lead status to count
+    if not stats:
+        print("⚠️ No leads found for this window")
+        return
+
     status_map = {status: count for status, count in stats}
 
-    # Get total scraped leads yesterday
+    # -------------------------------------------------
+    # Scraped count
+    # -------------------------------------------------
     scraped = (
         db.query(func.sum(ScrapingBatch.lead_count))
-        .filter(ScrapingBatch.created_at >= yesterday)
+        .filter(ScrapingBatch.created_at >= start)
+        .filter(ScrapingBatch.created_at < end)
         .scalar()
         or 0
     )
 
-    # Prepare summary data
+    print("📦 Scraped:", scraped)
+
+    # -------------------------------------------------
+    # Prepare summary
+    # -------------------------------------------------
     summary_data = {
         "retarget": status_map.get("RETARGET", 0),
         "contacted": status_map.get("CONTACTED", 0),
@@ -59,17 +82,21 @@ Retarget: {summary_data['retarget']}
 Contacted: {summary_data['contacted']}
 Meetings: {summary_data['meetings']}
 Scraped: {summary_data['scraped']}
-"""
+""".strip()
 
-    # Save notification in DB
+    # -------------------------------------------------
+    # Save notification
+    # -------------------------------------------------
     notif = Notification(
         user_id=user.id,
         title="Daily Lead Summary",
-        message=message.strip(),
-        type="SUMMARY"
+        message=message,
+        type="SUMMARY",
     )
+
     db.add(notif)
     db.commit()
+
 
     # Send summary email
     subject = "Daily Lead Summary"

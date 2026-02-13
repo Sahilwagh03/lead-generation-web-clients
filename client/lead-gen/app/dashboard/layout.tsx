@@ -29,7 +29,7 @@ function DashboardLayout({ children }: Props) {
             <ModeToggle/>
           </div>
         </header>
-        <div className="p-4 pt-2">{children}</div>
+        <div className="p-4 lg:pt-2">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );
