@@ -48,7 +48,7 @@ def create_scraping_batch_api(
 
     
 @router.post("/process-leads")
-async def api_process_leads(batch_id: int, db: Session = Depends(get_db)):
+async def api_process_leads(batch_id: int, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
     try:
         if not batch_id:
             raise HTTPException(
@@ -56,7 +56,7 @@ async def api_process_leads(batch_id: int, db: Session = Depends(get_db)):
                 detail="Batch ID cannot be empty"
             )
 
-        result = await process_leads(db,batch_id)
+        result = await process_leads(db,batch_id,current_user.id)
 
         if result is None:
             raise HTTPException(

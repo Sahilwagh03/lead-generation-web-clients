@@ -243,7 +243,7 @@ async def classify_lead_async(
 # -----------------------------
 # ULTRA-FAST main function
 # -----------------------------
-async def process_leads(db:Session , batch_id: int) -> Dict[str, Any]:
+async def process_leads(db:Session , batch_id: int , user_id:int) -> Dict[str, Any]:
     """
     OPTIMIZED: Processes leads 3-4x faster.
     
@@ -257,7 +257,7 @@ async def process_leads(db:Session , batch_id: int) -> Dict[str, Any]:
     """
     update_batch_status(db, batch_id, BatchStatus.PROCESSING.value)
 
-    leads , total = get_all_leads(batch_id=batch_id,db=db)
+    leads , total = get_all_leads(batch_id=batch_id,db=db,user_id=user_id)
     
     stats = {
         "total": 0,

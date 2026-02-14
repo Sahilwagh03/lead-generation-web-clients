@@ -79,16 +79,16 @@ CREATE TABLE IF NOT EXISTS leads (
 
     email VARCHAR(255),
     phone VARCHAR(50),
-    whatsapp VARCHAR(50),
+    whatsapp TEXT,
 
     is_verified BOOLEAN DEFAULT FALSE,
     is_business BOOLEAN DEFAULT FALSE,
 
-    category VARCHAR(100),
+    category TEXT,
     full_name TEXT,
 
-    lead_type VARCHAR(50),
-    platform_detected VARCHAR(50),
+    lead_type TEXT,
+    platform_detected VARCHAR(100),
 
     website_phones JSONB DEFAULT '[]'::jsonb,
     tags JSONB DEFAULT '[]'::jsonb,
